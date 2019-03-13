@@ -100,33 +100,6 @@ class Processor(object):
 
         return context + '<separate>' + label
 
-    def generate_mask(self, texts_df: pd.DataFrame, mask_func, add_prefix=True, suffix='',  **kwargs):
-
-        masked_texts = texts_df.applymap(lambda s: mask_func(s, **kwargs))
-
-        # masked_texts.to_json(os.path.join(self.out_dir , 'masked_{}.json'.format(suffix)),force_ascii=False, orient='index')
-
-        if add_prefix:
-            prefixed_masked = self.add_prefix(masked_texts)
-        else:
-            prefixed_masked = masked_texts
-
-        l = prefixed_masked.values.flatten()
-
-        l = [s.split('<separate>') for s in l]
-
-        l = [n for n in l if len(n) == 2]
-
-        corpus, labels = zip(*l)
-
-        with open(os.path.join(self.out_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
-            f.write('\n'.join(corpus))
-
-        with open(os.path.join(self.out_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
-            f.write('\n'.join(labels))
-
-        return corpus, labels
-
     def generate_corpus(self, df, suffix=''):
         l = df.values.flatten()
         l = [s for s in l if s != '']
@@ -141,32 +114,19 @@ class Processor(object):
         with open(os.path.join(self.out_dir, 'prefixed_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(l))
 
-    def add_keywords(self,dataframe,ratio=0.2):
-        if not self.vectorizer:
-            vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7)
-            vectorizer.fit(self.df.values.flatten())
+    def extract_keywords(self,string,ratio=0.3):
+        if not string:
+            return ''
 
-        shape = dataframe.shape
-        strings = dataframe.values.flatten()
-        lengths=[len(s.split(' ')) for s in strings]
-        tfidf = self.vectorizer.transform(strings)
-        tfidf = tfidf.toarray()
-
-        data=list(zip(tfidf,lengths))
-        data=np.reshape(data,shape)
-        tfidf_df = pd.DataFrame(data, columns=dataframe.columns)
-
-        def tfidf_to_keywords(data):
-            num=int(data[1]*ratio)
-            series=pd.Series(data[0],index=self.vectorizer.get_feature_names())
-            series=series.sort_values(ascending=False)
-            return ' '.join(series.index[:num]) + ' [sep] '
-
-        keywords=tfidf_df.applymap(tfidf_to_keywords).astype(str)
-        for column in dataframe.columns:
-            dataframe[column]=keywords[column].str.cat(dataframe[column])
-
-        return dataframe
+        print(string)
+        tfidf = self.vectorizer.transform([string])
+        tfidf = tfidf.toarray()[0]
+        
+        num=int(len(string.split(' '))*ratio)
+        series=pd.Series(tfidf,index=self.vectorizer.get_feature_names())
+        series=series.sort_values(ascending=False)
+        return ' '.join(series.index[:num]) + ' [sep] '
+        
 
 
     def add_prefix(self, dataframe, add_class=True, add_types=True):
@@ -293,53 +253,83 @@ def main():
                         help="Maximal phrase number of input string.")
     parser.add_argument("--add_prefix", default=True, type=bool,
                         help="Add prefix or not.")
-    # parser.add_argument("--mode", default="random", choices=["random", "median"],
-    #                     help="mask mode.")
+    parser.add_argument("--add_keywords", default=True, type=bool,
+                        help="Add keywords or not.")
+    parser.add_argument("--mask_index", default=None, type=int,
+                        help="Index of the phrase to be masked.")
+    parser.add_argument("--mode", default="random", choices=["random", "median"],
+                        help="mask mode.Ignored when mask_index is not None.")
 
     args = parser.parse_args()
     print(args)
+
+    suffix=args.suffix
+    output_dir=args.output_dir
+
     if args.run == 'mask' or args.run=='context':
-        p = Processor(args.output_dir, args.df_path)
-        p.generate_yaml(args.suffix)
+        p = Processor(output_dir, args.df_path)
+        p.generate_yaml(suffix)
         df=p.comments_str
         if args.class_str:
             df=pd.DataFrame(df[args.class_str])
         df=df.applymap(lambda s: p.length_selection(s,args.min_words, args.max_words))
         df=df.applymap(lambda s: p.phrase_selction(s,args.min_phrase, args.max_phrase))
 
-        f=p.mask_phrase_str if args.run=='mask' else p.mask_for_context
+        selected_strings=df.copy()
 
-        corpus, labels = p.generate_mask(texts_df=df,
-                                         mask_func=f,
-                                         add_prefix=args.add_prefix,
-                                         suffix=args.suffix
-                                         )
+        f=p.mask_phrase_str if args.run=='mask' else p.mask_for_context
+        df=df.applymap(lambda s:f(s,mask_index=args.mask_index,mode=args.mode))
+
+        if args.add_prefix:
+            df=p.add_prefix(df)
+
+        if args.add_keywords:
+            if not p.vectorizer:
+                p.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7,max_features=30000)
+                p.vectorizer.fit(p.df.values.flatten())
+            keywords = selected_strings.applymap(lambda s: p.extract_keywords(s))
+            for column in df.columns:
+                df[column]=keywords[column].str.cat(df[column])
+
+        strings = df.values.flatten()
+        strings = [s.split('<separate>') for s in strings]
+        strings = [n for n in strings if len(n) == 2]
+
+        corpus, labels = zip(*strings)
+
+        with open(os.path.join(args.out_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
+            f.write('\n'.join(corpus))
+
+        with open(os.path.join(args.out_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
+            f.write('\n'.join(labels))
 
         slice_ratios = [0.8, 0.1]
         shuffle_index = np.random.permutation(list(range(len(corpus))))
 
-        paths = [os.path.join(args.output_dir, '{}_corpus_{}'.format(s, args.suffix)) for s in ['train', 'eval', 'test']]
+        paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
         Processor.slice_and_save(corpus, shuffle_index, slice_ratios, paths)
 
-        paths = [os.path.join(args.output_dir, '{}_labels_{}'.format(s, args.suffix)) for s in ['train', 'eval', 'test']]
+        paths = [os.path.join(output_dir, '{}_labels_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
         Processor.slice_and_save(labels, shuffle_index, slice_ratios, paths)
+
+
 
     elif args.run == 'compare':
 
-        p, l, c = map(Processor.read, [args.preds_path, args.labels_path, args.corpus_path])
+        p, strings, c = map(Processor.read, [args.preds_path, args.labels_path, args.corpus_path])
 
-        Processor.compare_result(p, l, c, os.path.join(args.output_dir + args.compare_path))
+        Processor.compare_result(p, strings, c, os.path.join(output_dir + args.compare_path))
 
     elif args.run == 'bleu':
         Processor.file_bleu(args.preds_path,
                             args.labels_path,
-                            os.path.join(args.output_dir, args.bleu_path))
+                            os.path.join(output_dir, args.bleu_path))
 
     elif args.run == 'corpus':
-        p = Processor(args.output_dir, args.df_path)
+        p = Processor(output_dir, args.df_path)
         df = p.comments_str.applymap(lambda s: p.length_selection(s, args.min_words, args.max_words))
         df = df.applymap(lambda s: p.phrase_selction(s, args.min_phrase, args.max_phrase))
-        p.generate_corpus(df, args.suffix)
+        p.generate_corpus(df, suffix)
 
 
 if __name__ == "__main__":

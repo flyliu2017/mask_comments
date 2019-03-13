@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
+import pickle
 
 class Processor(object):
     def __init__(self, out_dir, df_path=None, raw_path=None, save_path='df.json'):
@@ -26,6 +27,7 @@ class Processor(object):
         self.out_dir = out_dir
         self.vectorizer: TfidfVectorizer = None
         self.tfidf= None
+        self.count= 0
 
     def segment(self, raw_path, output):
         raw = []
@@ -114,19 +116,36 @@ class Processor(object):
         with open(os.path.join(self.out_dir, 'prefixed_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(l))
 
-    def extract_keywords(self,string,ratio=0.3):
-        if not string:
-            return ''
 
-        print(string)
-        tfidf = self.vectorizer.transform([string])
-        tfidf = tfidf.toarray()[0]
+    def extract_keywords(self,dataframe,ratio=0.3):
+
+        shape = dataframe.shape
+        strings = dataframe.values.flatten()
+        keywords_num = [int(len(s.split(' '))*ratio) for s in strings]
+
+        tfidf = self.vectorizer.transform(strings)
+
+        data = list(zip(tfidf, keywords_num))
+
+        feature_names = np.array(self.vectorizer.get_feature_names())
         
-        num=int(len(string.split(' '))*ratio)
-        series=pd.Series(tfidf,index=self.vectorizer.get_feature_names())
-        series=series.sort_values(ascending=False)
-        return ' '.join(series.index[:num]) + ' [sep] '
-        
+        def tfidf_to_keywords(tfidf_and_num):
+            tfidf=tfidf_and_num[0]
+            num=tfidf_and_num[1]
+            z = list(zip(tfidf.data, tfidf.indices))
+            z.sort(key=lambda n:n[0],reverse=True)
+            indexes=[n[1] for n in z[:num]]
+            return ' '.join(feature_names[indexes]) + ' [sep] '
+
+        data=map(tfidf_to_keywords,data)
+        data=list(data)
+
+        data = np.reshape(data, shape)
+
+        keywords = pd.DataFrame(data, columns=dataframe.columns,dtype=str)
+
+        return keywords
+
 
 
     def add_prefix(self, dataframe, add_class=True, add_types=True):
@@ -285,9 +304,17 @@ def main():
 
         if args.add_keywords:
             if not p.vectorizer:
-                p.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7,max_features=30000)
-                p.vectorizer.fit(p.df.values.flatten())
-            keywords = selected_strings.applymap(lambda s: p.extract_keywords(s))
+                path_v = os.path.join(output_dir, 'vectorizer.pickle')
+                if os.path.isfile(path_v):
+                    with open(path_v, 'rb') as f:
+                        p.vectorizer=pickle.load(f)
+                else:
+                    p.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7,max_features=30000)
+                    p.vectorizer.fit(p.df.values.flatten())
+                    with open(path_v, 'wb') as f:
+                        pickle.dump(p.vectorizer,f)
+
+            keywords = p.extract_keywords(selected_strings)
             for column in df.columns:
                 df[column]=keywords[column].str.cat(df[column])
 
@@ -297,10 +324,10 @@ def main():
 
         corpus, labels = zip(*strings)
 
-        with open(os.path.join(args.out_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
+        with open(os.path.join(output_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(corpus))
 
-        with open(os.path.join(args.out_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
+        with open(os.path.join(output_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(labels))
 
         slice_ratios = [0.8, 0.1]

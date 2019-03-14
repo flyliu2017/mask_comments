@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
+import time
 
 class Processor(object):
     def __init__(self, out_dir, df_path=None, raw_path=None, save_path='df.json'):
@@ -25,7 +26,8 @@ class Processor(object):
 
         self.out_dir = out_dir
         self.vectorizer: TfidfVectorizer = None
-        self.tfidf= None
+        self.feature_names=None
+        self.count=0
 
     def segment(self, raw_path, output):
         raw = []
@@ -115,18 +117,23 @@ class Processor(object):
             f.write('\n'.join(l))
 
     def extract_keywords(self,string,ratio=0.3):
+        self.count+=1
+        if self.count%100==0:
+            print(time.strftime("%H:%M:%S")+' '+ str(self.count))
         if not string:
             return ''
 
-        print(string)
+
         tfidf = self.vectorizer.transform([string])
-        tfidf = tfidf.toarray()[0]
-        
+
+
         num=int(len(string.split(' '))*ratio)
-        series=pd.Series(tfidf,index=self.vectorizer.get_feature_names())
-        series=series.sort_values(ascending=False)
-        return ' '.join(series.index[:num]) + ' [sep] '
-        
+        z = list(zip(tfidf.data, tfidf.indices))
+        z.sort(key=lambda n: n[0], reverse=True)
+        indexes = [n[1] for n in z[:num]]
+
+        return ' '.join(self.feature_names[indexes]) + ' [sep] '
+
 
 
     def add_prefix(self, dataframe, add_class=True, add_types=True):
@@ -167,6 +174,8 @@ class Processor(object):
     def compare_result(preds, labels, corpus, output='compare'):
         if len(preds) != len(labels) or len(labels) != len(corpus):
             raise ValueError("predictions,labels and corpus should have same length.")
+
+        corpus=[s.split('[sep]')[-1] for s in corpus]
         result = []
         for p, l, c in zip(preds, labels, corpus):
             result.append(c.replace('mask', l + " | " + p))
@@ -210,7 +219,8 @@ class Processor(object):
                   'source_words_vocabulary': 'vocab_{}'.format(suffix),
                   'target_words_vocabulary': 'vocab_{}'.format(suffix)
                   },
-             'train': {'train_steps': 100000}
+             'train': {'train_steps': 100000},
+             'eval' : {'eval_delay' : 3600 }
              }
         with open(os.path.join(self.out_dir, 'train.yml'), 'w', encoding='utf8') as f:
             f.write(yaml.dump(d))
@@ -253,8 +263,8 @@ def main():
                         help="Maximal phrase number of input string.")
     parser.add_argument("--add_prefix", default=True, type=bool,
                         help="Add prefix or not.")
-    parser.add_argument("--add_keywords", default=True, type=bool,
-                        help="Add keywords or not.")
+    parser.add_argument("--add_keywords", default='whole', choices=['whole','only_mask',''],
+                        help="Choose keywords. 'whole' for sentence, 'only_mask' for masked phrase, '' for no keywords.")
     parser.add_argument("--mask_index", default=None, type=int,
                         help="Index of the phrase to be masked.")
     parser.add_argument("--mode", default="random", choices=["random", "median"],
@@ -283,24 +293,37 @@ def main():
         if args.add_prefix:
             df=p.add_prefix(df)
 
-        if args.add_keywords:
-            if not p.vectorizer:
-                p.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7,max_features=30000)
-                p.vectorizer.fit(p.df.values.flatten())
-            keywords = selected_strings.applymap(lambda s: p.extract_keywords(s))
-            for column in df.columns:
-                df[column]=keywords[column].str.cat(df[column])
-
         strings = df.values.flatten()
         strings = [s.split('<separate>') for s in strings]
         strings = [n for n in strings if len(n) == 2]
 
-        corpus, labels = zip(*strings)
+        corpus ,labels=zip(*strings)
 
-        with open(os.path.join(args.out_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
+        if ''!=args.add_keywords:
+            if not p.vectorizer:
+                p.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7,max_features=30000)
+                p.vectorizer.fit(p.df.values.flatten())
+            p.feature_names = np.array(p.vectorizer.get_feature_names())
+
+
+            if 'whole'==args.add_keywords:
+
+                kw_strings=selected_strings.values.flatten()
+                kw_strings=[s for s in kw_strings if s !='']
+
+            else:
+                kw_strings=labels
+
+            keywords = map(p.extract_keywords,kw_strings)
+
+            z=zip(keywords,corpus)
+            corpus=[ n[0]+ n[1] for n in z]
+
+
+        with open(os.path.join(output_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(corpus))
 
-        with open(os.path.join(args.out_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
+        with open(os.path.join(output_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(labels))
 
         slice_ratios = [0.8, 0.1]
@@ -318,7 +341,7 @@ def main():
 
         p, strings, c = map(Processor.read, [args.preds_path, args.labels_path, args.corpus_path])
 
-        Processor.compare_result(p, strings, c, os.path.join(output_dir + args.compare_path))
+        Processor.compare_result(p, strings, c, os.path.join(output_dir , args.compare_path))
 
     elif args.run == 'bleu':
         Processor.file_bleu(args.preds_path,

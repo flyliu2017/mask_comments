@@ -4,13 +4,11 @@ import os
 def first_mask(out_dir,suffix):
     p1 = os.path.join(out_dir, '{}_corpus_{}'.format('test', suffix))
     with open(p1, 'r', encoding='utf8') as f:
-        corpus = f.readlines()
+        corpus = f.read().split('\n')
     p2 = os.path.join(out_dir, '{}_labels_{}'.format('test', suffix))
     with open(p2, 'r', encoding='utf8') as f:
-        labels = f.readlines()
+        labels = f.read().split('\n')
 
-    corpus=[s+'\n' if not s.endswith('\n') else s for s in corpus  ]
-    labels=[s+'\n' if not s.endswith('\n') else s for s in labels  ]
     cs=[]
     ls=[]
     for c ,l in zip(corpus,labels):
@@ -23,9 +21,11 @@ def first_mask(out_dir,suffix):
         ls.append(newl)
 
     with open(os.path.join(out_dir,'first_mask_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
-        f.writelines(cs)
+        f.write('\n'.join(cs))
     with open(os.path.join(out_dir,'first_mask_labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
-        f.writelines(ls)
+        f.write('\n'.join(ls))
 
 
 out_dir='/data/share/liuchang/car_comment/mask/p5_p10'
+suffix='p5_p10'
+first_mask(out_dir,suffix)

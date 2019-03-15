@@ -2,6 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="286439ad-738b-4fe9-b5f3-f3decd4acda2" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/data_process/sort_result_by_slor.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data_process/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data_process/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/data_process/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data_process/logs/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/data_process/logs/test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/data_process/processor.py" beforeDir="false" afterPath="$PROJECT_DIR$/data_process/processor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/modification/change_mask.py" beforeDir="false" afterPath="$PROJECT_DIR$/modification/change_mask.py" afterDir="false" />
     </list>
@@ -13,30 +18,28 @@
   </component>
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/mask_comments$processor__1_.coverage" NAME="processor (1) Coverage Results" MODIFIED="1552463983456" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data_process" />
-    <SUITE FILE_PATH="coverage/mask_comments$processor.coverage" NAME="processor Coverage Results" MODIFIED="1552466131926" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data_process" />
-    <SUITE FILE_PATH="coverage/mask_comments$change_mask.coverage" NAME="change_mask Coverage Results" MODIFIED="1552542015118" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/modification" />
+    <SUITE FILE_PATH="coverage/mask_comments$processor.coverage" NAME="processor Coverage Results" MODIFIED="1552551206709" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data_process" />
+    <SUITE FILE_PATH="coverage/mask_comments$sort_result_by_slor.coverage" NAME="sort_result_by_slor Coverage Results" MODIFIED="1552639574648" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data_process" />
+    <SUITE FILE_PATH="coverage/mask_comments$change_mask.coverage" NAME="change_mask Coverage Results" MODIFIED="1552636808024" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/modification" />
     <SUITE FILE_PATH="coverage/mask_comments$json.coverage" NAME="json Coverage Results" MODIFIED="1552300199703" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/pandas/io/json" />
     <SUITE FILE_PATH="coverage/mask_comments$test__2_.coverage" NAME="test (2) Coverage Results" MODIFIED="1551952023015" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/generation" />
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="375">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/data_process/processor.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="5201">
-              <caret line="303" column="23" selection-start-line="303" selection-start-column="23" selection-end-line="303" selection-end-column="23" />
-              <folding>
-                <element signature="e#14#30#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="-3840">
+              <caret line="5" column="9" selection-start-line="5" selection-start-column="9" selection-end-line="5" selection-end-column="9" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/modification/change_mask.py">
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/data_process/utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="408">
-              <caret line="17" column="36" lean-forward="true" selection-start-line="17" selection-start-column="36" selection-end-line="17" selection-end-column="36" />
+            <state relative-caret-position="48">
+              <caret line="2" selection-start-line="2" selection-end-line="2" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -45,19 +48,73 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/.PyCharm2018.3/system/python_stubs/310523884/time.py">
+        <entry file="file://$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/pandas/tests/extension/numpy_/test_numpy_nested.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="3384">
-              <caret line="241" column="4" selection-start-line="241" selection-start-column="4" selection-end-line="241" selection-end-column="4" />
+            <state relative-caret-position="271">
+              <caret line="19" selection-start-line="19" selection-end-line="19" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/pandas/core/frame.py">
+        <entry file="file://$PROJECT_DIR$/data_process/cal_scores.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="153480">
-              <caret line="6488" column="8" selection-start-line="6488" selection-start-column="8" selection-end-line="6488" selection-end-column="8" />
+            <state relative-caret-position="648">
+              <caret line="27" column="48" lean-forward="true" selection-start-line="27" selection-start-column="48" selection-end-line="27" selection-end-column="48" />
+              <folding>
+                <element signature="e#0#18#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/nltk/__init__.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="192">
+              <caret line="8" column="3" selection-start-line="8" selection-start-column="3" selection-end-line="8" selection-end-column="3" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/rouge/rouge.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="857">
+              <caret line="51" column="6" selection-start-line="51" selection-start-column="6" selection-end-line="51" selection-end-column="6" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/modification/change_mask.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1104">
+              <caret line="46" lean-forward="true" selection-start-line="46" selection-end-line="46" />
+              <folding>
+                <element signature="e#0#9#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/data_process/sort_result_by_slor.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="336">
+              <caret line="14" column="28" lean-forward="true" selection-start-line="14" selection-start-column="28" selection-end-line="14" selection-end-column="28" />
+              <folding>
+                <element signature="e#0#44#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.PyCharm2018.3/system/python_stubs/310523884/time.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="5784">
+              <caret line="241" column="4" selection-start-line="241" selection-start-column="4" selection-end-line="241" selection-end-column="4" />
             </state>
           </provider>
         </entry>
@@ -82,14 +139,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>variable_mapping</find>
-      <find>generate_mask_sub_sentence</find>
-      <find>generate_mask</find>
-      <find>FLAGS</find>
-      <find>corpus</find>
-      <find>It seems that global step</find>
-      <find>tmp_dir</find>
-      <find>df_class</find>
       <find>lists</find>
       <find>masked_classe_type_5_80</find>
       <find>mask/</find>
@@ -112,12 +161,19 @@
       <find>time.time()</find>
       <find>args.out_dir</find>
       <find>add_keywords</find>
+      <find>06</find>
+      <find>-05</find>
+      <find>entropys</find>
+      <find>strings</find>
+      <find>freqd</find>
+      <find>@staticmethod</find>
+      <find>Processor.</find>
+      <find>Processor</find>
     </findStrings>
     <replaceStrings>
       <replace>labels</replace>
       <replace>cs_class</replace>
       <replace>cs_class_5_80</replace>
-      <replace>l</replace>
       <replace>self.prefixed_masked</replace>
       <replace>self.output_suffix</replace>
       <replace>: '</replace>
@@ -133,9 +189,12 @@
       <replace>p</replace>
       <replace>time.time())</replace>
       <replace>output_dir</replace>
+      <replace>entropy</replace>
+      <replace>l</replace>
     </replaceStrings>
     <dirStrings>
       <dir>$USER_HOME$/.local/lib/python3.6/site-packages/tensorflow</dir>
+      <dir>$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/nltk</dir>
     </dirStrings>
   </component>
   <component name="Git.Settings">
@@ -161,7 +220,10 @@
         <option value="$PROJECT_DIR$/generation/generate_comments_workdir.sh" />
         <option value="$PROJECT_DIR$/generation/test.py" />
         <option value="$PROJECT_DIR$/modification/change_mask.py" />
+        <option value="$PROJECT_DIR$/data_process/cal_scores.py" />
+        <option value="$PROJECT_DIR$/data_process/sort_result_by_slor.py" />
         <option value="$PROJECT_DIR$/data_process/processor.py" />
+        <option value="$PROJECT_DIR$/data_process/utils.py" />
       </list>
     </option>
   </component>
@@ -177,22 +239,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope">
-        <subPane subId="Scope 'Project Files'; set:Project Files; class com.intellij.psi.search.scope.ProjectFilesScope">
-          <expand>
-            <path>
-              <item name="mask_comments" type="3d21c010:ScopeViewTreeModel$ProjectNode" />
-              <item name="" type="442cc68d:ScopeViewTreeModel$RootNode" />
-            </path>
-            <path>
-              <item name="mask_comments" type="3d21c010:ScopeViewTreeModel$ProjectNode" />
-              <item name="" type="442cc68d:ScopeViewTreeModel$RootNode" />
-              <item name="data_process" type="9f88c78c:ScopeViewTreeModel$FileNode" />
-            </path>
-          </expand>
-          <select />
-        </subPane>
-      </pane>
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -219,13 +265,29 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope">
+        <subPane subId="Scope 'Project Files'; set:Project Files; class com.intellij.psi.search.scope.ProjectFilesScope">
+          <expand>
+            <path>
+              <item name="mask_comments" type="3d21c010:ScopeViewTreeModel$ProjectNode" />
+              <item name="" type="442cc68d:ScopeViewTreeModel$RootNode" />
+            </path>
+            <path>
+              <item name="mask_comments" type="3d21c010:ScopeViewTreeModel$ProjectNode" />
+              <item name="" type="442cc68d:ScopeViewTreeModel$RootNode" />
+              <item name="data_process" type="9f88c78c:ScopeViewTreeModel$FileNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="WebServerToolWindowFactoryState" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../Exercises" />
+    <property name="last_opened_file_path" value="$USER_HOME$/下载/0#000561.zst" />
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
-    <property name="settings.editor.selected.configurable" value="project.propVCSSupport.Mappings" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -249,7 +311,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.change_mask">
+  <component name="RunManager" selected="Python.sort_result_by_slor">
     <configuration name="mask_comments" type="JupiterNotebook" factoryName="Jupyter Notebook">
       <module name="mask_comments" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -266,28 +328,6 @@
       <option name="additionalOptions" value="" />
       <option name="ipnbHost" value="127.0.0.1" />
       <option name="ipnbPort" value="8888" />
-      <method v="2" />
-    </configuration>
-    <configuration name="bleu" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="mask_comments" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/data_process/bleu.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
     <configuration name="change_mask" type="PythonConfigurationType" factoryName="Python" temporary="true">
@@ -326,7 +366,29 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/data_process/processor.py" />
-      <option name="PARAMETERS" value="mask --df_path /data/share/liuchang/car_comment/mask/df.json --output_dir /data/share/liuchang/car_comment/mask/p5_p10 --min_words 10 --max_words 80 --min_phrase 5 --max_phrase 10 --suffix p5_p10  --mode random" />
+      <option name="PARAMETERS" value="mask --df_path /data/share/liuchang/car_comment/mask/df_5_80_p5_p10.json --output_dir /data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask --min_words 10 --max_words 80 --min_phrase 5 --max_phrase 10 --suffix keywords_from_mask --mode random --add_keywords only_mask" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="sort_result_by_slor" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="mask_comments" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/data_process" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/data_process/sort_result_by_slor.py" />
+      <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -380,21 +442,24 @@
     </configuration>
     <list>
       <item itemvalue="Jupyter Notebook.mask_comments" />
-      <item itemvalue="Python.bleu" />
       <item itemvalue="Python.test" />
       <item itemvalue="Python.test (1)" />
       <item itemvalue="Python.processor" />
       <item itemvalue="Python.change_mask" />
+      <item itemvalue="Python.sort_result_by_slor" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.sort_result_by_slor" />
         <item itemvalue="Python.change_mask" />
         <item itemvalue="Python.processor" />
         <item itemvalue="Python.test (1)" />
         <item itemvalue="Python.test" />
-        <item itemvalue="Python.bleu" />
       </list>
     </recent_temporary>
+  </component>
+  <component name="StructureViewFactory">
+    <option name="ACTIVE_ACTIONS" value=",SHOW_INHERITED" />
   </component>
   <component name="SvnConfiguration">
     <configuration />
@@ -413,22 +478,23 @@
       <workItem from="1552102090008" duration="17887000" />
       <workItem from="1552360515365" duration="13514000" />
       <workItem from="1552378044726" duration="12524000" />
-      <workItem from="1552462557126" duration="14336000" />
+      <workItem from="1552462557126" duration="26428000" />
+      <workItem from="1552617870262" duration="10089000" />
+      <workItem from="1552634676699" duration="5230000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="94684000" />
+    <option name="totallyTimeSpent" value="122095000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="67" y="25" width="2493" height="1415" extended-state="6" />
-    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.47933885" visible="true" weight="0.21173574" />
-      <window_info id="Structure" order="1" sideWeight="0.5206612" side_tool="true" visible="true" weight="0.21173574" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.47697756" visible="true" weight="0.21583915" />
+      <window_info id="Structure" order="1" sideWeight="0.5230224" side_tool="true" visible="true" weight="0.21583915" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.3306962" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.33016628" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.32858273" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.39904988" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
@@ -437,11 +503,11 @@
       <window_info anchor="bottom" id="Version Control" order="7" weight="0.3293745" />
       <window_info anchor="bottom" id="Terminal" order="8" weight="0.33016628" />
       <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
-      <window_info active="true" anchor="bottom" id="Python Console" order="10" visible="true" weight="0.23357086" />
+      <window_info anchor="bottom" id="Python Console" order="10" weight="0.2327791" />
       <window_info anchor="bottom" id="Docker" order="11" show_stripe_button="false" />
       <window_info anchor="bottom" id="File Transfer" order="12" weight="0.32858273" />
       <window_info anchor="bottom" id="Database Changes" order="13" />
-      <window_info anchor="bottom" id="Inspection Results" order="14" weight="0.32990506" />
+      <window_info active="true" anchor="bottom" id="Inspection Results" order="14" visible="true" weight="0.3293745" />
       <window_info active="true" anchor="bottom" id="Concurrent Activities Diagram" order="15" weight="0.32990506" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
@@ -464,8 +530,13 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/data_process/processor.py</url>
-          <line>134</line>
+          <line>122</line>
           <option name="timeStamp" value="7" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/data_process/processor.py</url>
+          <line>220</line>
+          <option name="timeStamp" value="8" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -525,52 +596,6 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$APPLICATION_CONFIG_DIR$/idea.properties" />
-    <entry file="file://$PROJECT_DIR$/model_utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="557">
-          <caret line="25" column="40" selection-start-line="25" selection-start-column="40" selection-end-line="25" selection-end-column="40" />
-          <folding>
-            <element signature="e#713#751#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.local/lib/python3.6/site-packages/numpy/random/randomkit.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-4755" />
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.local/lib/python3.6/site-packages/numpy/random/info.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <folding>
-            <element signature="e#0#64#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.local/lib/python3.6/site-packages/numpy/random/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-872">
-          <folding>
-            <element signature="e#0#47#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharmCE2018.3/system/python_stubs/-1247971763/numpy/random/mtrand.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="45">
-          <caret line="2216" column="4" selection-start-line="2216" selection-start-column="4" selection-end-line="2216" selection-end-column="4" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/data_process/test.py" />
-    <entry file="file://$PROJECT_DIR$/data_process/test" />
-    <entry file="file://$USER_HOME$/.local/lib/python3.6/site-packages/tensorflow/contrib/lite/python/interpreter_wrapper/tensorflow_wrap_interpreter_wrapper.py">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
     <entry file="file://$USER_HOME$/.local/lib/python3.6/site-packages/tensorflow/python/training/basic_session_run_hooks.py" />
     <entry file="file://$USER_HOME$/.local/lib/python3.6/site-packages/numpy/random/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
@@ -767,20 +792,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.PyCharm2018.3/system/python_stubs/310523884/pandas/_libs/lib.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="9888">
-          <caret line="420" column="4" selection-start-line="420" selection-start-column="4" selection-end-line="420" selection-end-column="4" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharm2018.3/system/python_stubs/310523884/time.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3384">
-          <caret line="241" column="4" selection-start-line="241" selection-start-column="4" selection-end-line="241" selection-end-column="4" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///data/share/liuchang/car_comment/mask/mask_comments/data_process/processor.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="569">
@@ -809,22 +820,114 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$USER_HOME$/下载/0#000561.zst">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="192">
+          <caret line="8" column="92" selection-start-line="8" selection-start-column="92" selection-end-line="8" selection-end-column="92" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/data_process/ngram_probs_model.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1466496">
+          <caret column="8719510" selection-start-column="8719496" selection-end-column="8719510" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/rouge/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <folding>
+            <element signature="e#0#38#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$APPLICATION_HOME_DIR$/helpers/typeshed/stdlib/3/typing.pyi">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="12192">
+          <caret line="511" column="8" selection-start-line="511" selection-start-column="8" selection-end-line="511" selection-end-column="8" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2018.3/system/python_stubs/310523884/time.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="5784">
+          <caret line="241" column="4" selection-start-line="241" selection-start-column="4" selection-end-line="241" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2018.3/system/python_stubs/310523884/pandas/_libs/lib.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="9888">
+          <caret line="420" column="4" selection-start-line="420" selection-start-column="4" selection-end-line="420" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/rouge/rouge.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="857">
+          <caret line="51" column="6" selection-start-line="51" selection-start-column="6" selection-end-line="51" selection-end-column="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/nltk/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="192">
+          <caret line="8" column="3" selection-start-line="8" selection-start-column="3" selection-end-line="8" selection-end-column="3" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/modification/change_mask.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="408">
-          <caret line="17" column="36" lean-forward="true" selection-start-line="17" selection-start-column="36" selection-end-line="17" selection-end-column="36" />
+        <state relative-caret-position="1104">
+          <caret line="46" lean-forward="true" selection-start-line="46" selection-end-line="46" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/data_process/sort_result_by_slor.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="336">
+          <caret line="14" column="28" lean-forward="true" selection-start-line="14" selection-start-column="28" selection-end-line="14" selection-end-column="28" />
+          <folding>
+            <element signature="e#0#44#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/data_process/cal_scores.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="648">
+          <caret line="27" column="48" lean-forward="true" selection-start-line="27" selection-start-column="48" selection-end-line="27" selection-end-column="48" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/data_process/processor.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="5201">
-          <caret line="303" column="23" selection-start-line="303" selection-start-column="23" selection-end-line="303" selection-end-column="23" />
+        <state relative-caret-position="-3840">
+          <caret line="5" column="9" selection-start-line="5" selection-start-column="9" selection-end-line="5" selection-end-column="9" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2018.3/system/remote_sources/310523884/-4176771/pandas/tests/extension/numpy_/test_numpy_nested.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="271">
+          <caret line="19" selection-start-line="19" selection-end-line="19" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/data_process/utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="48">
+          <caret line="2" selection-start-line="2" selection-end-line="2" />
           <folding>
-            <element signature="e#14#30#0" expanded="true" />
+            <element signature="e#0#9#0" expanded="true" />
           </folding>
         </state>
       </provider>

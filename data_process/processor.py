@@ -1,13 +1,16 @@
 # coding=utf8
-import sacrebleu
 import argparse
+import jieba
+import json
 import os
-import json, jieba, yaml
+import time
+import yaml
+
 import numpy as np
 import pandas as pd
-import re
 from sklearn.feature_extraction.text import TfidfVectorizer
-import time
+from data_process.utils import *
+
 
 class Processor(object):
     def __init__(self, out_dir, df_path=None, raw_path=None, save_path='df.json'):
@@ -53,22 +56,6 @@ class Processor(object):
         df.to_json(output, force_ascii=False, orient='index')
 
         self.df = df
-
-    @staticmethod
-    def length_selection(string, min_words=5, max_words=40):
-        l = string.split(' ')
-        l = [s for s in l if s.strip() != '']
-        l = l if min_words <= len(l) <= max_words else []
-        return ' '.join(l)
-
-    @staticmethod
-    def phrase_selction(string, min_phrase=5, max_phrase=10):
-        l = re.split('[，。]', re.sub('[!?;！？；]|… …|…', '，', string))
-        l = [s for s in l if s.strip() != '']
-        if len(l) < min_phrase or len(l) > max_phrase:
-            return ''
-        else:
-            return '，'.join(l)
 
     @staticmethod
     def mask_phrase_str(string, mask_index=None, mode='random', min_index=0, max_index=128):
@@ -118,7 +105,7 @@ class Processor(object):
 
     def extract_keywords(self,string,ratio=0.3):
         self.count+=1
-        if self.count%100==0:
+        if self.count%1000==0:
             print(time.strftime("%H:%M:%S")+' '+ str(self.count))
         if not string:
             return ''
@@ -127,7 +114,8 @@ class Processor(object):
         tfidf = self.vectorizer.transform([string])
 
 
-        num=int(len(string.split(' '))*ratio)
+        num=int(round(len(string.split(' '))*ratio))
+        num=max(1,num)
         z = list(zip(tfidf.data, tfidf.indices))
         z.sort(key=lambda n: n[0], reverse=True)
         indexes = [n[1] for n in z[:num]]
@@ -152,63 +140,6 @@ class Processor(object):
 
         return prefixed_df
 
-    @staticmethod
-    def slice_and_save(text_list, shuffle_index, slice_ratios, paths):
-        if len(paths) != len(slice_ratios) + 1:
-            print('wrong num of output paths!')
-            exit(1)
-        cum_sum = np.cumsum(slice_ratios)
-        if cum_sum[np.logical_or(cum_sum < 0, cum_sum > 1)].size:
-            print('wrong slide_ratio!')
-            exit(1)
-        l = len(text_list)
-        slide_num = [0] + [int(l * cum_sum[i]) for i in range(len(cum_sum))] + [l]
-
-        # 使用numpy.random.shuffle容易内存溢出，使用索引重建python列表可避免
-        shuffle_list = [text_list[i] for i in shuffle_index]
-        for i in range(len(slide_num) - 1):
-            with open(paths[i], 'w', encoding='utf8') as f:
-                f.write('\n'.join(shuffle_list[slide_num[i]:slide_num[i + 1]]))
-
-    @staticmethod
-    def compare_result(preds, labels, corpus, output='compare'):
-        if len(preds) != len(labels) or len(labels) != len(corpus):
-            raise ValueError("predictions,labels and corpus should have same length.")
-
-        corpus=[s.split('[sep]')[-1] for s in corpus]
-        result = []
-        for p, l, c in zip(preds, labels, corpus):
-            result.append(c.replace('mask', l + " | " + p))
-        with open(output, 'w', encoding='utf8') as f:
-            f.write('\n'.join(result))
-
-    @staticmethod
-    def read(path):
-        with open(path, 'r') as f:
-            l = f.read().splitlines()
-        return l
-
-    @staticmethod
-    def cal_bleu(predictions, labels, output="bleu"):
-        if len(predictions) != len(labels):
-            raise ValueError('The number of Predictions and labels should be same.')
-        results = []
-        for p, l in zip(predictions, labels):
-            results.append(sacrebleu.sentence_bleu(p, l))
-        with open(output, 'w', encoding='utf8') as f:
-            f.write('\n'.join([str(r) for r in results]))
-            ave = sum(results) / len(predictions)
-            f.write('\n' + str(ave))
-        print(ave)
-
-    @staticmethod
-    def file_bleu(pred_path, labels_path, output="bleu"):
-        with open(pred_path, 'r', encoding='utf8') as f:
-            predictions = f.readlines()
-        with open(labels_path, 'r', encoding='utf8') as f:
-            labels = f.readlines()
-        Processor.cal_bleu(predictions, labels, output)
-
     def generate_yaml(self, suffix):
         d = {'model_dir': 'transformer_' + suffix,
              'data':
@@ -229,7 +160,7 @@ class Processor(object):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("run",
-                        choices=["mask", "compare", "bleu", "context"],
+                        choices=["mask", "compare_mask","compare_result", "bleu", "context"],
                         help="Run type.")
 
     parser.add_argument("--df_path",
@@ -282,8 +213,8 @@ def main():
         df=p.comments_str
         if args.class_str:
             df=pd.DataFrame(df[args.class_str])
-        df=df.applymap(lambda s: p.length_selection(s,args.min_words, args.max_words))
-        df=df.applymap(lambda s: p.phrase_selction(s,args.min_phrase, args.max_phrase))
+        # df=df.applymap(lambda s: p.length_selection(s,args.min_words, args.max_words))
+        # df=df.applymap(lambda s: p.phrase_selction(s,args.min_phrase, args.max_phrase))
 
         selected_strings=df.copy()
 
@@ -309,7 +240,7 @@ def main():
             if 'whole'==args.add_keywords:
 
                 kw_strings=selected_strings.values.flatten()
-                kw_strings=[s for s in kw_strings if s !='']
+                kw_strings=[ s for s in kw_strings if s !='' ]
 
             else:
                 kw_strings=labels
@@ -318,7 +249,6 @@ def main():
 
             z=zip(keywords,corpus)
             corpus=[ n[0]+ n[1] for n in z]
-
 
         with open(os.path.join(output_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(corpus))
@@ -330,21 +260,26 @@ def main():
         shuffle_index = np.random.permutation(list(range(len(corpus))))
 
         paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-        Processor.slice_and_save(corpus, shuffle_index, slice_ratios, paths)
+        slice_and_save(corpus, shuffle_index, slice_ratios, paths)
 
         paths = [os.path.join(output_dir, '{}_labels_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-        Processor.slice_and_save(labels, shuffle_index, slice_ratios, paths)
+        slice_and_save(labels, shuffle_index, slice_ratios, paths)
 
 
 
-    elif args.run == 'compare':
+    elif args.run == 'compare_mask':
 
-        p, strings, c = map(Processor.read, [args.preds_path, args.labels_path, args.corpus_path])
+        p, l, c = map(read, [args.preds_path, args.labels_path, args.corpus_path])
 
-        Processor.compare_result(p, strings, c, os.path.join(output_dir , args.compare_path))
+        compare_mask(p, l, c, os.path.join(output_dir, args.compare_path))
+
+    elif args.run == 'compare_result':
+        p, l, c = map(read, [args.preds_path, args.labels_path, args.corpus_path])
+
+        compare_result(p, l, c, os.path.join(output_dir, args.compare_path))
 
     elif args.run == 'bleu':
-        Processor.file_bleu(args.preds_path,
+        file_bleu(args.preds_path,
                             args.labels_path,
                             os.path.join(output_dir, args.bleu_path))
 

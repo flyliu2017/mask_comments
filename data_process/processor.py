@@ -3,14 +3,13 @@ import argparse
 import jieba
 import json
 import os
-import time
+import re
 import yaml
 
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from data_process.utils import *
-
+import data_process.utils as utils
 
 class Processor(object):
     def __init__(self, out_dir, df_path=None, raw_path=None, save_path='df.json'):
@@ -103,26 +102,6 @@ class Processor(object):
         with open(os.path.join(self.out_dir, 'prefixed_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(l))
 
-    def extract_keywords(self,string,ratio=0.3):
-        self.count+=1
-        if self.count%1000==0:
-            print(time.strftime("%H:%M:%S")+' '+ str(self.count))
-        if not string:
-            return ''
-
-
-        tfidf = self.vectorizer.transform([string])
-
-
-        num=int(round(len(string.split(' '))*ratio))
-        num=max(1,num)
-        z = list(zip(tfidf.data, tfidf.indices))
-        z.sort(key=lambda n: n[0], reverse=True)
-        indexes = [n[1] for n in z[:num]]
-
-        return ' '.join(self.feature_names[indexes]) + ' [sep] '
-
-
 
     def add_prefix(self, dataframe, add_class=True, add_types=True):
         if not add_class and not add_types:
@@ -139,6 +118,11 @@ class Processor(object):
                 prefixed_df[l] = types.str.cat(prefixed_df[l])
 
         return prefixed_df
+
+    def init_vectorizer(self):
+        self.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7, max_features=30000)
+        self.vectorizer.fit(self.df.values.flatten())
+        self.feature_names = np.array(self.vectorizer.get_feature_names())
 
     def generate_yaml(self, suffix):
         d = {'model_dir': 'transformer_' + suffix,
@@ -232,10 +216,7 @@ def main():
 
         if ''!=args.add_keywords:
             if not p.vectorizer:
-                p.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7,max_features=30000)
-                p.vectorizer.fit(p.df.values.flatten())
-            p.feature_names = np.array(p.vectorizer.get_feature_names())
-
+                p.init_vectorizer()
 
             if 'whole'==args.add_keywords:
 
@@ -245,7 +226,7 @@ def main():
             else:
                 kw_strings=labels
 
-            keywords = map(p.extract_keywords,kw_strings)
+            keywords = [ utils.extract_keywords(p.vectorizer,p.feature_names,s) for s in kw_strings]
 
             z=zip(keywords,corpus)
             corpus=[ n[0]+ n[1] for n in z]
@@ -260,26 +241,26 @@ def main():
         shuffle_index = np.random.permutation(list(range(len(corpus))))
 
         paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-        slice_and_save(corpus, shuffle_index, slice_ratios, paths)
+        utils.slice_and_save(corpus, shuffle_index, slice_ratios, paths)
 
         paths = [os.path.join(output_dir, '{}_labels_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-        slice_and_save(labels, shuffle_index, slice_ratios, paths)
+        utils.slice_and_save(labels, shuffle_index, slice_ratios, paths)
 
 
 
     elif args.run == 'compare_mask':
 
-        p, l, c = map(read, [args.preds_path, args.labels_path, args.corpus_path])
+        p, l, c = map(utils.read_to_list, [args.preds_path, args.labels_path, args.corpus_path])
 
-        compare_mask(p, l, c, os.path.join(output_dir, args.compare_path))
+        utils.compare_mask(p, l, c, os.path.join(output_dir, args.compare_path))
 
     elif args.run == 'compare_result':
-        p, l, c = map(read, [args.preds_path, args.labels_path, args.corpus_path])
+        p, l, c = map(utils.read_to_list, [args.preds_path, args.labels_path, args.corpus_path])
 
-        compare_result(p, l, c, os.path.join(output_dir, args.compare_path))
+        utils.compare_result(p, l, c, os.path.join(output_dir, args.compare_path))
 
     elif args.run == 'bleu':
-        file_bleu(args.preds_path,
+        utils.file_bleu(args.preds_path,
                             args.labels_path,
                             os.path.join(output_dir, args.bleu_path))
 
@@ -288,6 +269,9 @@ def main():
         df = p.comments_str.applymap(lambda s: p.length_selection(s, args.min_words, args.max_words))
         df = df.applymap(lambda s: p.phrase_selction(s, args.min_phrase, args.max_phrase))
         p.generate_corpus(df, suffix)
+
+
+
 
 
 if __name__ == "__main__":

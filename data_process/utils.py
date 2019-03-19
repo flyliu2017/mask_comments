@@ -45,10 +45,19 @@ def compare_result(preds, labels, corpus, output='compare'):
             f.writelines([r, c, '\n'])
 
 
-def read(path):
+def read_to_list(path):
     with open(path, 'r') as f:
         l = f.read().splitlines()
     return l
+
+def read_to_dict(path,sep,value_type):
+    with open(path, 'r') as f:
+        l = f.read().splitlines()
+    l=[s.split(sep) for s in l]
+    d={}
+    for key,value in l:
+        d[key]=value_type(value)
+    return d
 
 
 def cal_bleu(predictions, labels, output="bleu"):
@@ -104,3 +113,36 @@ def sort_by_slor(scorer : CalScore, results,entropy, corpus,output):
             f.write(r + '\n' + c + '\n\n')
 
     return results_with_slor
+
+def extract_keywords(vectorizer, feature_names, string, keywords_file=None, ratio=0.3):
+    if not string:
+        return ''
+
+    words=string.split(' ')
+    words=[w for w in words if w.strip() != '']
+
+    num=int(round(len(words)*ratio))
+    num=max(1,num)
+
+    keywords=[]
+
+    if keywords_file:
+        keywords_dict=read_to_dict(keywords_file,'\t',float)
+        keywords=[(word,keywords_dict[word]) for word in words if word in keywords_dict]
+
+        if len(keywords)>num:
+            keywords.sort(key= lambda n:n[1],reverse=True)
+            keywords=keywords[:num]
+
+    keywords = [n[0] for n in keywords]
+
+    if len(keywords)<num:
+        tfidf = vectorizer.transform([string])
+
+        z = list(zip(tfidf.data, tfidf.indices))
+        z.sort(key=lambda n: n[0], reverse=True)
+        indexes = [n[1] for n in z[:num]]
+        keywords.extend(feature_names[indexes])
+
+
+    return ' '.join(keywords) + ' [sep] '

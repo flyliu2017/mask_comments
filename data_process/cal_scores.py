@@ -95,7 +95,7 @@ class CalScore(object):
     def cal_slor_with_ppl(self, rewrite_tokens, ppl):
         len_tokens = len(rewrite_tokens.split())
         ## 计算SLOR分数: -ln(ppl)-ln(P(S))/|S|
-        unigram_probs = 1.0
+        unigram_probs = 0
         for token in rewrite_tokens.split():
             token = token.lower()
             if token in self.unigram_probs:
@@ -104,8 +104,8 @@ class CalScore(object):
                 token_prob = self.unigram_probs['<unk>']
                 print('assert token: {} not found...'.format(token))
 
-            unigram_probs *= token_prob
-        slor_score = -np.log(ppl) - np.log(unigram_probs) / len_tokens
+            unigram_probs += np.log(token_prob)
+        slor_score = -np.log(ppl) - unigram_probs / len_tokens
         return slor_score
 
     def cal_slor_with_entropy(self, rewrite_tokens, entropy_loss):

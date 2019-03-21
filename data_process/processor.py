@@ -11,6 +11,9 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 import data_process.utils as utils
 
+
+STOP_WORDS=utils.read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
+
 class Processor(object):
     def __init__(self, out_dir, df_path=None, raw_path=None, save_path='df.json'):
         if not df_path:
@@ -120,8 +123,9 @@ class Processor(object):
         return prefixed_df
 
     def init_vectorizer(self):
-        self.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", max_df=0.7, max_features=30000)
-        self.vectorizer.fit(self.df.values.flatten())
+
+        self.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", stop_words=STOP_WORDS)
+        self.vectorizer.fit(self.comments_str.values.flatten())
         self.feature_names = np.array(self.vectorizer.get_feature_names())
 
     def generate_yaml(self, suffix):
@@ -135,7 +139,8 @@ class Processor(object):
                   'target_words_vocabulary': 'vocab_{}'.format(suffix)
                   },
              'train': {'train_steps': 100000},
-             'eval' : {'eval_delay' : 3600 }
+             'eval' : {'eval_delay' : 1800 },
+             'params': {'decay_params':{'warmup_steps' : 500 } }
              }
         with open(os.path.join(self.out_dir, 'train.yml'), 'w', encoding='utf8') as f:
             f.write(yaml.dump(d))
@@ -148,6 +153,7 @@ def main():
                         help="Run type.")
 
     parser.add_argument("--df_path",
+                        default='/data/share/liuchang/car_comment/mask/comments_5_80_p5_p10.json',
                         help="The path to dataframe file. If file not exist, dataframe will be saved at this location.")
     parser.add_argument("--raw_path",
                         help="The path to raw data file.")
@@ -226,7 +232,12 @@ def main():
             else:
                 kw_strings=labels
 
-            keywords = [ utils.extract_keywords(p.vectorizer,p.feature_names,s) for s in kw_strings]
+            corpus_keywords=utils.read_to_dict('/data/share/liuchang/car_comment/mask/corpus_keywords','\t',float,1000)
+            word_tfidf=utils.read_to_dict('/data/share/liuchang/car_comment/mask/word_tfidf','\t',float,None)
+
+            keywords = [ utils.extract_keywords(p.vectorizer,p.feature_names,s,word_tfidf=word_tfidf,
+                                                corpus_keywords=corpus_keywords,stop_words=STOP_WORDS)
+                         for s in kw_strings]
 
             z=zip(keywords,corpus)
             corpus=[ n[0]+ n[1] for n in z]
@@ -237,7 +248,7 @@ def main():
         with open(os.path.join(output_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(labels))
 
-        slice_ratios = [0.8, 0.1]
+        slice_ratios = [0.9, 0.99]
         shuffle_index = np.random.permutation(list(range(len(corpus))))
 
         paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
@@ -269,10 +280,6 @@ def main():
         df = p.comments_str.applymap(lambda s: p.length_selection(s, args.min_words, args.max_words))
         df = df.applymap(lambda s: p.phrase_selction(s, args.min_phrase, args.max_phrase))
         p.generate_corpus(df, suffix)
-
-
-
-
 
 if __name__ == "__main__":
     main()

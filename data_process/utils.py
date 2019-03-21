@@ -5,6 +5,8 @@ import numpy as np
 from data_process.cal_scores import CalScore
 
 
+
+
 def length_selection(string, min_words=5, max_words=40):
     l = string.split(' ')
     l = [s for s in l if s.strip() != '']
@@ -50,15 +52,18 @@ def read_to_list(path):
         l = f.read().splitlines()
     return l
 
-def read_to_dict(path,sep,value_type):
+def read_to_dict(path,sep,value_type,range):
     with open(path, 'r') as f:
         l = f.read().splitlines()
+    if range:
+        l=l[:range]
     l=[s.split(sep) for s in l]
     d={}
     for key,value in l:
         d[key]=value_type(value)
     return d
 
+STOP_WORDS=read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
 
 def cal_bleu(predictions, labels, output="bleu"):
     if len(predictions) != len(labels):
@@ -114,35 +119,67 @@ def sort_by_slor(scorer : CalScore, results,entropy, corpus,output):
 
     return results_with_slor
 
-def extract_keywords(vectorizer, feature_names, string, keywords_file=None, ratio=0.3):
+def extract_keywords(vectorizer, feature_names, string, word_tfidf:dict=None,corpus_keywords:dict=None,stop_words=None,ratio=0.3):
     if not string:
         return ''
+
+    feature_names=np.array(feature_names)
 
     words=string.split(' ')
     words=[w for w in words if w.strip() != '']
 
-    num=int(round(len(words)*ratio))
+    words_set=set(words)
+    stop_words_set={w for w in words_set if w in stop_words}
+    
+
+    num=int(round(len(words_set)*ratio))
     num=max(1,num)
 
     keywords=[]
 
-    if keywords_file:
-        keywords_dict=read_to_dict(keywords_file,'\t',float)
-        keywords=[(word,keywords_dict[word]) for word in words if word in keywords_dict]
+    if corpus_keywords:
+        keywords=[(word,corpus_keywords[word]) for word in words_set if word in corpus_keywords]
 
         if len(keywords)>num:
             keywords.sort(key= lambda n:n[1],reverse=True)
             keywords=keywords[:num]
 
     keywords = [n[0] for n in keywords]
-
+    
+    
+    
     if len(keywords)<num:
         tfidf = vectorizer.transform([string])
 
-        z = list(zip(tfidf.data, tfidf.indices))
-        z.sort(key=lambda n: n[0], reverse=True)
-        indexes = [n[1] for n in z[:num]]
-        keywords.extend(feature_names[indexes])
+        ziped = list(zip(tfidf.data, tfidf.indices))
+        ziped=[n for n in ziped if not feature_names[n[1]] in keywords]
+        ziped.sort(key=lambda n: n[0], reverse=True)
 
+        indexes = [n[1] for n in ziped[:num-len(keywords)]]
+        keywords.extend(feature_names[indexes])
+    
+    if len(keywords)<num:
+        remain = words_set - set(keywords) - stop_words_set
+        if len(remain):
+            keywords.extend(topn_words_from_dict(word_tfidf,  num, remain))
+
+    if len(keywords)<num:
+        if len(stop_words_set):
+            keywords.extend(topn_words_from_dict(word_tfidf,  num, stop_words_set))
+
+    # 将关键词按它们在语句中出现的顺序排列
+    keywords=[word for word in words if word in keywords]
 
     return ' '.join(keywords) + ' [sep] '
+
+
+def topn_words_from_dict(keywords_dict, num, words_set=None):
+    if not words_set:
+        words_set=keywords_dict.keys()
+    l = [(w, keywords_dict[w]) for w in words_set]
+    l.sort(key=lambda n: n[1], reverse=True)
+    l = [n[0] for n in l[:num]]
+    return l
+
+
+

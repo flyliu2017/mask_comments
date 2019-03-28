@@ -1,6 +1,7 @@
 import re
 import sacrebleu
 import numpy as np
+import time
 
 from data_process.cal_scores import CalScore
 
@@ -119,9 +120,26 @@ def sort_by_slor(scorer : CalScore, results,entropy, corpus,output):
 
     return results_with_slor
 
-def extract_keywords(vectorizer, feature_names, string, word_tfidf:dict=None,corpus_keywords:dict=None,stop_words=None,ratio=0.3):
+def extract_keywords(vectorizer, feature_names, string, word_tfidf:dict=None,corpus_keywords:dict =None,stop_words=None,ratio=0.3):
+    """
+
+    :param vectorizer: tfidfvectorizer
+    :param feature_names: words list from vectorizer.get_feature_names()
+    :param string: string to be extracted
+    :param word_tfidf: a dict contain all words in corpus, { word : tfidf }
+    :param corpus_keywords: the keywords list that we will search keywords in it firstly.
+    :param stop_words: stop words
+    :param ratio: the number of keywords is round( NUM * ratio), NUM is the number of words in string.
+    :return:
+    """
+
+    print(time.strftime("%H:%M:%S"))
+
     if not string:
         return ''
+
+    if not corpus_keywords:
+        corpus_keywords = {}
 
     feature_names=np.array(feature_names)
 
@@ -151,33 +169,33 @@ def extract_keywords(vectorizer, feature_names, string, word_tfidf:dict=None,cor
     if len(keywords)<num:
         tfidf = vectorizer.transform([string])
 
-        ziped = list(zip(tfidf.data, tfidf.indices))
-        ziped=[n for n in ziped if not feature_names[n[1]] in keywords]
-        ziped.sort(key=lambda n: n[0], reverse=True)
+        zipped = list(zip(tfidf.data, tfidf.indices))
+        zipped=[n for n in zipped if not feature_names[n[1]] in keywords]
+        zipped.sort(key=lambda n: n[0], reverse=True)
 
-        indexes = [n[1] for n in ziped[:num-len(keywords)]]
+        indexes = [n[1] for n in zipped[:num-len(keywords)]]
         keywords.extend(feature_names[indexes])
     
     if len(keywords)<num:
         remain = words_set - set(keywords) - stop_words_set
         if len(remain):
-            keywords.extend(topn_words_from_dict(word_tfidf,  num, remain))
+            keywords.extend(topn_words_from_dict(word_tfidf,  num-len(keywords), remain))
 
     if len(keywords)<num:
         if len(stop_words_set):
-            keywords.extend(topn_words_from_dict(word_tfidf,  num, stop_words_set))
+            keywords.extend(topn_words_from_dict(word_tfidf,  num-len(keywords), stop_words_set))
 
     # 将关键词按它们在语句中出现的顺序排列
     keywords=[word for word in words if word in keywords]
 
     return ' '.join(keywords) + ' [sep] '
 
+def topn_words_from_dict(word_score_dict, num, candidates=None, reverse=True):
+    if not candidates:
+        candidates=word_score_dict.keys()
 
-def topn_words_from_dict(keywords_dict, num, words_set=None):
-    if not words_set:
-        words_set=keywords_dict.keys()
-    l = [(w, keywords_dict[w]) for w in words_set]
-    l.sort(key=lambda n: n[1], reverse=True)
+    l = [(w, word_score_dict[w]) for w in candidates]
+    l.sort(key=lambda n: n[1], reverse=reverse)
     l = [n[0] for n in l[:num]]
     return l
 

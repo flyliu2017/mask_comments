@@ -9,6 +9,7 @@ import numpy as np
 def get_slor(scorer : CalScore, results):
     batch=10
     times=np.ceil(len(results)/batch)
+    times=int(times)
     no_prefix=[re.split('__.+?__',r)[-1].strip() for r in results]
     ppls=[]
     for i in range(times):
@@ -24,13 +25,12 @@ def get_wmd(corpus_path, features, predictions):
     
     return wmd
 
-if __name__ == '__main__':
 
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("sort",
                         choices=["slor", "wmd"],
                         help="Run type.")
-
     parser.add_argument("--data_dir",
                         default='/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask',
                         help="The data directory.")
@@ -43,46 +43,37 @@ if __name__ == '__main__':
     parser.add_argument("--suffix",
                         default='only_mask',
                         help="The suffix of filename.")
-
-
-
     parser.add_argument("--reverse", default=False,
                         dest='reverse',
                         action='store_true',
                         help="True for descending.")
     parser.add_argument("--num", default=3000, type=int,
                         help="Number of results to be sorted. 0 for whole results.")
-
     args = parser.parse_args()
     print(args)
 
-    data_dir= args.data_dir
-    results=os.path.join(data_dir,args.result_file)
-    results=read_to_list(results)
-    # entropy_and_result=read(os.path.join(data_dir, 'p5_p10/entropy_and_result'))
-    # entropy_and_result=[s.split('|||') for s in entropy_and_result]
-    # entropy=[n[0] for n in entropy_and_result]
-    # results=[n[1] for n in entropy_and_result]
-
-    features=read_to_list(os.path.join(data_dir, args.features_file))
-
+    data_dir = args.data_dir
+    results = os.path.join(data_dir, args.result_file)
+    results = read_to_list(results)
+    features = read_to_list(os.path.join(data_dir, args.features_file))
     corpus_path = '/data/share/liuchang/car_comment/mask/selected_str_5_80.txt'
 
-    sort=args.sort
-    reverse=args.reverse
+    sort = args.sort
+    reverse = args.reverse
+
     if args.num:
         num = args.num
     else:
-        num=len(results)
+        num = len(results)
 
-    if sort=='slor':
-        scorer=CalScore('unigram_model.json')
-        score=get_slor(scorer, results[:num])
+    if sort == 'slor':
+        scorer = CalScore('/data/share/liuchang/car_comment/mask/mask_comments/data_process/unigram_model.json')
+        score = get_slor(scorer, results[:num])
 
     else:
-        score=get_wmd(corpus_path, features[:num], results[:num])
+        score = get_wmd(corpus_path, features[:num], results[:num])
 
-    data_dir=os.path.join(data_dir,'wmd_whole')
+    # data_dir = os.path.join(data_dir, 'wmd_whole')
 
     results_with_score = list(zip(results, features, score))
     results_with_score.sort(key=lambda n: n[-1], reverse=reverse)
@@ -93,14 +84,17 @@ if __name__ == '__main__':
     with open(os.path.join(data_dir, 'comparation_sorted_by_{}'.format(sort)), 'w', encoding='utf8') as f:
         for r, c in zip(sorted_result, sorted_features):
             f.write(r + '\n' + c + '\n\n')
-
-    scores=[ n[-1] for n in results_with_score]
+    scores = [n[-1] for n in results_with_score]
     average = sum(scores) / len(scores)
     scores.append(average)
     print("average score: {}".format(average))
-    
-    scores=[str(s) for s in scores]
+    scores = [str(s) for s in scores]
     with open(os.path.join(data_dir, sort), 'w', encoding='utf8') as f:
         f.write('\n'.join(scores))
+
+
+if __name__ == '__main__':
+
+    main()
     
 

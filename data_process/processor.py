@@ -91,6 +91,77 @@ class Processor(object):
 
         return context + '<separate>' + label
 
+    @staticmethod
+    def mask_unimportant_words(string, vectorizer, feature_names, word_tfidf: dict = None, corpus_keywords: dict = None,
+                               stop_words=None, ratio=0.3):
+        """
+
+        :param vectorizer: tfidfvectorizer
+        :param feature_names: words list from vectorizer.get_feature_names()
+        :param string: string to be masked
+        :param word_tfidf: a dict contain all words in corpus, { word : tfidf }
+        :param corpus_keywords: the keywords list that we will search keywords in it firstly.
+        :param stop_words: stop words
+        :param ratio: the ratio of mask.
+        :return:
+        """
+
+        if not string:
+            return ''
+
+        if not corpus_keywords:
+            corpus_keywords={}
+
+        feature_names = np.array(feature_names)
+
+        words = string.split(' ')
+        words_and_index=list(enumerate(words))
+
+        words_and_index=[w for w in words_and_index if not w[1] in ',.?!:，。：！？、']
+
+        stop_words_index = [w for w in words_and_index if w[1] in stop_words]
+
+        num = int(round(len(words_and_index) * ratio))
+        num = max(1, num)
+
+        maskwords = []
+
+        word_tfidf={ w:word_tfidf[w[1]] for w in words_and_index}
+
+        if len(stop_words_index):
+            maskwords.extend(utils.topn_words_from_dict(word_tfidf, num, stop_words_index ,reverse=False))
+
+        if len(maskwords) < num:
+
+            remain = [ w for w in words_and_index if not w[1] in stop_words and not w[1] in feature_names ]
+
+            if len(remain):
+                maskwords.extend(utils.topn_words_from_dict(word_tfidf, num-len(maskwords), remain))
+
+            if len(maskwords) < num:
+                tfidf = vectorizer.transform([string])
+
+                d = {feature_names[n[1]]:n[0] for n in  zip(tfidf.data, tfidf.indices)}
+                zipped=[(w,d[w[1]]) for w in words_and_index if w in d and not w in corpus_keywords]
+                zipped.sort(key=lambda n: n[1])
+                zipped = [n[0] for n in zipped[:num - len(maskwords)]]
+
+                maskwords.extend(zipped)
+
+                # 这段代码会选取关键词列表中tfidf值排名低的加入mask列表，注释后可以保留关键词，即使mask数量达不到ratio要求
+
+                # if len(maskwords) < num:
+                #     if corpus_keywords:
+                #         keywords = [(word, corpus_keywords[word]) for word in words_and_index if word in corpus_keywords]
+                #
+                #         keywords.sort(key=lambda n: n[1])
+                #         maskwords.extend(keywords[:num-len(maskwords)])
+
+        maskindex = [n[0] for n in maskwords]
+        words=['<mask>' if i in maskindex else words[i] for i in range(len(words))]
+
+        return ' '.join(words) + '<separate>' + string
+
     def generate_corpus(self, df, suffix=''):
         l = df.values.flatten()
         l = [s for s in l if s != '']
@@ -124,7 +195,7 @@ class Processor(object):
 
     def init_vectorizer(self):
 
-        self.vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", stop_words=STOP_WORDS)
+        self.vectorizer = TfidfVectorizer(token_pattern=r'(?:^|(?<=\s))([^\s]+)(?=\s|$)', stop_words=STOP_WORDS,max_features=30000)
         self.vectorizer.fit(self.comments_str.values.flatten())
         self.feature_names = np.array(self.vectorizer.get_feature_names())
 
@@ -140,7 +211,8 @@ class Processor(object):
                   },
              'train': {'train_steps': 100000},
              'eval' : {'eval_delay' : 1800 },
-             'params': {'decay_params':{'warmup_steps' : 500 } }
+             'params': {'decay_params':{'warmup_steps' : 1000 },
+                        'learning_rate': 2.0}
              }
         with open(os.path.join(self.out_dir, 'train.yml'), 'w', encoding='utf8') as f:
             f.write(yaml.dump(d))
@@ -149,7 +221,7 @@ class Processor(object):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("run",
-                        choices=["mask", "compare_mask","compare_result", "bleu", "context"],
+                        choices=["mask", "compare_mask","compare_result", "bleu", "context","mask_unimportant"],
                         help="Run type.")
 
     parser.add_argument("--df_path",
@@ -184,10 +256,12 @@ def main():
                         help="Maximal phrase number of input string.")
     parser.add_argument("--add_prefix", default=True, type=bool,
                         help="Add prefix or not.")
-    parser.add_argument("--add_keywords", default='whole', choices=['whole','only_mask',''],
+    parser.add_argument("--add_keywords", default='', choices=['whole','only_mask',''],
                         help="Choose keywords. 'whole' for sentence, 'only_mask' for masked phrase, '' for no keywords.")
     parser.add_argument("--mask_index", default=None, type=int,
                         help="Index of the phrase to be masked.")
+    parser.add_argument("--ratio", default=0.3, type=float,
+                        help="Ratio of words to be masked.")
     parser.add_argument("--mode", default="random", choices=["random", "median"],
                         help="mask mode.Ignored when mask_index is not None.")
 
@@ -196,8 +270,10 @@ def main():
 
     suffix=args.suffix
     output_dir=args.output_dir
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
 
-    if args.run == 'mask' or args.run=='context':
+    if args.run == 'mask' or args.run=='context' or args.run=='mask_unimportant':
         p = Processor(output_dir, args.df_path)
         p.generate_yaml(suffix)
         df=p.comments_str
@@ -206,10 +282,21 @@ def main():
         # df=df.applymap(lambda s: p.length_selection(s,args.min_words, args.max_words))
         # df=df.applymap(lambda s: p.phrase_selction(s,args.min_phrase, args.max_phrase))
 
-        selected_strings=df.copy()
+        selected_strings = df.copy()
 
-        f=p.mask_phrase_str if args.run=='mask' else p.mask_for_context
-        df=df.applymap(lambda s:f(s,mask_index=args.mask_index,mode=args.mode))
+        if args.run=='mask_unimportant':
+            if not p.vectorizer:
+                p.init_vectorizer()
+
+            corpus_keywords = utils.read_to_dict('/data/share/liuchang/car_comment/mask/corpus_keywords', '\t', float,1000)
+            word_tfidf = utils.read_to_dict('/data/share/liuchang/car_comment/mask/word_tfidf', '\t', float, None)
+
+            df=df.applymap(lambda s: p.mask_unimportant_words(s, p.vectorizer, p.feature_names, word_tfidf=word_tfidf,
+                                                           corpus_keywords=corpus_keywords, stop_words=STOP_WORDS,ratio=args.ratio))
+
+        else:
+            f=p.mask_phrase_str if args.run=='mask' else p.mask_for_context
+            df=df.applymap(lambda s:f(s,mask_index=args.mask_index,mode=args.mode))
 
         if args.add_prefix:
             df=p.add_prefix(df)
@@ -220,7 +307,7 @@ def main():
 
         corpus ,labels=zip(*strings)
 
-        if ''!=args.add_keywords:
+        if args.run!='mask_unimportant' and ''!=args.add_keywords:
             if not p.vectorizer:
                 p.init_vectorizer()
 
@@ -242,20 +329,8 @@ def main():
             z=zip(keywords,corpus)
             corpus=[ n[0]+ n[1] for n in z]
 
-        with open(os.path.join(output_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
-            f.write('\n'.join(corpus))
-
-        with open(os.path.join(output_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
-            f.write('\n'.join(labels))
-
-        slice_ratios = [0.9, 0.99]
-        shuffle_index = np.random.permutation(list(range(len(corpus))))
-
-        paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-        utils.slice_and_save(corpus, shuffle_index, slice_ratios, paths)
-
-        paths = [os.path.join(output_dir, '{}_labels_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-        utils.slice_and_save(labels, shuffle_index, slice_ratios, paths)
+        slice_ratios = [0.9, 0.09]
+        generate_dataset(corpus, labels, output_dir, slice_ratios, suffix)
 
 
 
@@ -280,6 +355,21 @@ def main():
         df = p.comments_str.applymap(lambda s: p.length_selection(s, args.min_words, args.max_words))
         df = df.applymap(lambda s: p.phrase_selction(s, args.min_phrase, args.max_phrase))
         p.generate_corpus(df, suffix)
+
+
+def generate_dataset(corpus, labels, output_dir, slice_ratios, suffix):
+    with open(os.path.join(output_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
+        f.write('\n'.join(corpus))
+
+    with open(os.path.join(output_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
+        f.write('\n'.join(labels))
+
+    shuffle_index = np.random.permutation(list(range(len(corpus))))
+    paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
+    utils.slice_and_save(corpus, shuffle_index, slice_ratios, paths)
+    paths = [os.path.join(output_dir, '{}_labels_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
+    utils.slice_and_save(labels, shuffle_index, slice_ratios, paths)
+
 
 if __name__ == "__main__":
     main()

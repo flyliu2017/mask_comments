@@ -1,16 +1,15 @@
 # coding=utf8
 
-import json
 import pickle
 import time
 
-import requests
-from nltk.probability import FreqDist, ConditionalProbDist, ConditionalFreqDist, MLEProbDist
+from nltk.probability import FreqDist
 from nltk.util import ngrams
 import numpy as np
 import os
 from collections import defaultdict
-from tensorflow.contrib import predictor
+
+from data_process.PEM import PEM
 from data_process.cal_scores import CalScore
 from sklearn.svm import SVR
 
@@ -122,7 +121,6 @@ def pairs_to_phrase_freq(pairs, out_dir):
 
     path=os.path.join(out_dir, 'phrase_log_prob.pickle')
     if os.path.isfile(path):
-        # raise FileExistsError(path)
         path=path+time.strftime("%y-%m-%d_%H:%M:%S")
     with open(path, 'wb') as f:
         pickle.dump(phrase_log_prob, f)
@@ -155,7 +153,7 @@ def sentence_segmentation(sentence, phrase_log_prob):
             if tuple(words[j + 1:i + 1]) in phrase_log_prob:
                 prob = phrase_log_prob[tuple(words[j + 1:i + 1])] + prob_list[j][1]
                 if prob > max_prob:
-                    prob_list[i] = [prob_list[j] + [i], prob]
+                    prob_list[i] = [prob_list[j][0] + [i], prob]
                     max_prob = prob
 
     segment_index = prob_list[-1][0] + [length]
@@ -237,7 +235,10 @@ def ngrams_f1(origin_ngrams: dict, paraphrase_ngrams: dict):
     precision = inter_weights / origin_total
     recall = inter_weights / paraphrase_total
 
-    f1 = 2 * precision * recall / (precision + recall)
+    if not ( precision and recall):
+        f1=0
+    else:
+        f1 = 2 * precision * recall / (precision + recall)
 
     return f1
 
@@ -249,51 +250,22 @@ def random_sentence_from_unigram_model(unigram:dict,max_length):
     return ' '.join(np.random.choice(words,max_length,p=probs))
 
 
-
-class PEM(object):
-    def __init__(self,z2e_prob_dist,phrase_log_prob,scorer,svm:SVR):
-        self.z2e_prob_dist=z2e_prob_dist
-        self.phrase_log_prob=phrase_log_prob
-        self.scorer=scorer
-        self.svm=svm
-
-
-
-
-    def pair_to_features(self,sentence,paraphrase):
-
-        bpngs=[sentence_bpng(sentence,self.phrase_log_prob,self.z2e_prob_dist),sentence_bpng(paraphrase,self.phrase_log_prob,self.z2e_prob_dist)]
-        adequacy=ngrams_f1(bpngs[0],bpngs[1])
-
-        zh_ngrams=[sentence_ngrams(sentence),sentence_ngrams(paraphrase)]
-        dissimilarity=ngrams_f1(zh_ngrams[0],zh_ngrams[1])
-
-        ppl=self.scorer.get_ppl_from_lm([paraphrase])[0]
-
-        fluency=-np.log(ppl)
-
-        return adequacy,fluency,dissimilarity
-
-    def pem_score(self,svm:SVR,sentences,paraphrases):
-        features=[self.pair_to_features(s,p) for s ,p in zip(sentences,paraphrases)]
-        scores=svm.predict(features)
-
-        return scores
-
-
 if __name__ == '__main__':
 
-    pairs_pickle='/data/share/liuchang/berkeleyaligner/output_zh/training.en-ch.pairs.pickle'
+    # if not 'CUDA_VISIBLE_DEVICES' in os.environ:
+    os.environ['CUDA_VISIBLE_DEVICES']='2'
+    data_dir='/data/share/liuchang/berkeleyaligner/output_chinese'
+    pairs_pickle=os.path.join(data_dir,'training.en-ch.pairs.pickle')
 
-    if not os.path.isfile('/data/share/liuchang/berkeleyaligner/output_zh/training.en-ch.pairs.pickle'):
-        with open('/data/share/liuchang/berkeleyaligner/output_zh/training.en-ch.align', 'r', encoding='utf8') as f:
-            aligns_full = f.readlines()
+    if not os.path.isfile(pairs_pickle):
+        with open('/data/share/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.align', 'r', encoding='utf8') as f:
+            aligns = f.readlines()
 
-        zh_en_dict, en_zh_dict = aligns_to_dicts(aligns_full)
+        zh_en_dict, en_zh_dict = aligns_to_dicts(aligns)
 
-        with open('/data/share/liuchang/berkeleyaligner/output_zh/training.chInput.txt', 'r', encoding='utf8') as f:
+        with open('/data/share/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.ch', 'r', encoding='utf8') as f:
             zhtxt = f.read().splitlines()
-        with open('/data/share/liuchang/berkeleyaligner/output_zh/training.enInput.txt', 'r', encoding='utf8') as f:
+        with open('/data/share/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.en', 'r', encoding='utf8') as f:
             entxt = f.read().splitlines()
 
         zhtxt = [s.split(' ') for s in zhtxt]
@@ -301,11 +273,14 @@ if __name__ == '__main__':
 
         pairs = phrase_pairs_from_dicts(zh_en_dict, en_zh_dict, zhtxt, entxt)
 
+        with open(pairs_pickle, 'wb') as f:
+            pickle.dump(pairs,f)
+
     else:
         with open(pairs_pickle, 'rb') as f:
             pairs=pickle.load(f)
 
-    fd, z2e_prob_dist = pairs_to_phrase_freq(pairs, out_dir="output_zh")
+    fd, z2e_prob_dist = pairs_to_phrase_freq(pairs, out_dir=data_dir)
 
     # keys = list(z2e_prob_dist.keys())
     #
@@ -323,6 +298,38 @@ if __name__ == '__main__':
     # print(ngrams_bag)
     # print(ngrams_at_head)
 
+    scorer = CalScore('/data/share/liuchang/car_comment/mask/mask_comments/data_process/unigram_probs_model.json')
 
 
+    with open('/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask/rewrite_pairs_scores.tsv', 'r',
+              encoding='utf8') as f:
+        paraphrase_scores = f.read().splitlines()
+
+    paraphrase_scores = [s.strip().split('\t') for s in paraphrase_scores]
+
+    sentences,paraphrases,scores=list(zip(*paraphrase_scores))
+
+    pem= PEM(z2e_prob_dist, fd, scorer)
+
+    features=[pem.pair_to_features(s,p) for s ,p in zip(sentences,paraphrases)]
+
+
+    # svm_path = os.path.join(data_dir, 'svm.pickle')
+    svm_path = '/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask/svm.pickle'
+
+    if not os.path.isfile(svm_path):
+        svm = SVR()
+        svm.fit(features,scores)
+
+        with open(svm_path, 'wb') as f:
+            pickle.dump(svm,f)
+    else:
+        with open(svm_path, 'rb') as f:
+            svm=pickle.load(f)
+
+    pem_scores=pem.pem_score(svm,sentences,paraphrases)
+
+
+
+    print(pem_scores)
 

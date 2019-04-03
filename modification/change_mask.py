@@ -85,7 +85,7 @@ if __name__ == '__main__':
     
     out_dir='/data/share/liuchang/car_comment/mask/p5_p10/keywords/whole_sentence'
     suffix='whole_sentence'
-    prefix='train'
-    # first_mask(out_dir,suffix)
-    recover_mask(out_dir,prefix,suffix)
+    prefix='test'
+    first_mask(out_dir,suffix)
+    # recover_mask(out_dir,prefix,suffix)
     # change_mask_and_keywords(out_dir,suffix,0)

@@ -12,3 +12,5 @@ python3 -m data_process.processor mask  \
                                             --add_keywords only_mask  &&  \
 python3  /data/share/liuchang/car_comment/mask/mask_comments/modification/keywords.py  phrase --suffix only_mask &&  \
 python3  /data/share/liuchang/car_comment/mask/mask_comments/modification/change_mask.py
+
+eval cd $input4 && python3 -m data_process.sort_result wmd --num 0 --data_dir $input1 --result_file $input3 --features_file $input2 --suffix mask_unimportant

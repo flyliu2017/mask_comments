@@ -14,7 +14,7 @@ def length_selection(string, min_words=5, max_words=40):
     l = l if min_words <= len(l) <= max_words else []
     return ' '.join(l)
 
-def phrase_selction(string, min_phrase=5, max_phrase=10):
+def phrase_selection(string, min_phrase=5, max_phrase=10):
     l = re.split('[，。]', re.sub('[!?;！？；]|… …|…', '，', string))
     l = [s for s in l if s.strip() != '']
     if len(l) < min_phrase or len(l) > max_phrase:
@@ -105,7 +105,7 @@ def slice_and_save(text_list, shuffle_index, slice_ratios, paths):
 
 
 def sort_by_slor(scorer : CalScore, results,entropy, corpus,output):
-    slor=[scorer.cal_slor_with_entropy(r.split('__')[-1],float(e)) for r,e in zip(results,entropy)]
+    slor=[scorer.cal_slor_with_entropy(r.split('__.+?__')[-1],float(e)) for r,e in zip(results,entropy)]
     results_with_slor=list(zip(results,corpus,slor))
 
     results_with_slor.sort(key=lambda n:n[-1],reverse=True)

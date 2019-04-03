@@ -5,9 +5,10 @@ import argparse
 import numpy as np
 from modification.change_mask import recover_mask
 import time
+import data_process.utils as utils
 
 
-STOP_WORDS=read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
+
 
 class Keywords_Processor(object):
     def __init__(self,vectorizer=None,corpus=None,**kwargs):
@@ -19,20 +20,13 @@ class Keywords_Processor(object):
         else:
             raise ValueError('Must provide either vectorizer or corpus.')
         self.feature_names=np.array(self.vectorizer.get_feature_names())
+        if 'num_words' in kwargs:
+            self.num_words=kwargs['num_words']
+        else:
+            self.num_words=[]
 
     def extract_keywords(self, string, word_tfidf: dict = None, corpus_keywords: dict = None,
                          stop_words=None, ratio=0.3):
-        """
-
-        :param vectorizer: tfidfvectorizer
-        :param feature_names: words list from vectorizer.get_feature_names()
-        :param string: string to be extracted
-        :param word_tfidf: a dict contain all words in corpus, { word : tfidf }
-        :param corpus_keywords: the keywords list that we will search keywords in it firstly.
-        :param stop_words: stop words
-        :param ratio: the number of keywords is round( NUM * ratio), NUM is the number of words in string.
-        :return:
-        """
 
         print(time.strftime("%H:%M:%S"))
 
@@ -54,7 +48,7 @@ class Keywords_Processor(object):
         keywords = []
 
         if corpus_keywords:
-            keywords = [(word, corpus_keywords[word]) for word in words_set if word in corpus_keywords]
+            keywords = [(word, corpus_keywords[word]) for word in words_set.intersection(corpus_keywords)]
 
             if len(keywords) > num:
                 keywords.sort(key=lambda n: n[1], reverse=True)
@@ -81,16 +75,16 @@ class Keywords_Processor(object):
             if len(stop_words_set):
                 keywords.extend(topn_words_from_dict(word_tfidf, num - len(keywords), stop_words_set))
 
+        keywords.extend([w for w in words_set.difference(keywords) if w in self.num_words])
         # 将关键词按它们在语句中出现的顺序排列
         keywords = [word for word in words if word in keywords]
 
         return ' '.join(keywords) + ' [sep] '
 
-    def phrase_keywords_lists(self, texts):
+    def phrase_keywords_lists(self, texts,word_tfidf,corpus_keywords):
         phrase_lists = [s.split('，') for s in texts]
 
-        corpus_keywords = read_to_dict('/data/share/liuchang/car_comment/mask/corpus_keywords', '\t', float, 1000)
-        word_tfidf = read_to_dict('/data/share/liuchang/car_comment/mask/word_tfidf', '\t', float, None)
+
         keywords_lists = [[self.extract_keywords( s,word_tfidf,corpus_keywords,stop_words=STOP_WORDS) for s in l] for l in phrase_lists]
 
 
@@ -133,10 +127,15 @@ def main():
     suffix = args.suffix
 
     corpus = read_to_list(args.corpus_file)
-    
+
+    STOP_WORDS = read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
+    corpus_keywords = read_to_dict('/data/share/liuchang/car_comment/mask/corpus_keywords', '\t', float, 1000)
+    word_tfidf = read_to_dict('/data/share/liuchang/car_comment/mask/word_tfidf', '\t', float, None)
+    num_words=read_to_list('/data/share/liuchang/car_comment/mask/mask_comments/data_process/key_words_all.txt')
+
     vectorizer = TfidfVectorizer(token_pattern=r'(?:^|(?<=\s))([^\s]+)(?=\s|$)', stop_words=STOP_WORDS, max_features=args.max_features)
     vectorizer.fit(corpus)
-    kp=Keywords_Processor(vectorizer)
+    kp=Keywords_Processor(vectorizer,num_words=num_words)
 
     run=args.run
     if 'phrase'==run:
@@ -145,7 +144,7 @@ def main():
         with open(os.path.join(data_dir, 'raw_test_corpus_{}'.format(suffix)), 'r', encoding='utf8') as f:
             raw = f.read().splitlines()
             
-        keywords_lists=kp.phrase_keywords_lists( raw)
+        keywords_lists=kp.phrase_keywords_lists( raw,corpus_keywords=corpus_keywords,word_tfidf=word_tfidf)
         SEP = ' ||| '
         keywords = [SEP.join(l) for l in keywords_lists]
 

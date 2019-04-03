@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 import data_process.utils as utils
+import time
 
 
 STOP_WORDS=utils.read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
@@ -109,6 +110,7 @@ class Processor(object):
         if not string:
             return ''
 
+        print(time.strftime("%H:%M:%S"))
         if not corpus_keywords:
             corpus_keywords={}
 
@@ -280,7 +282,7 @@ def main():
         if args.class_str:
             df=pd.DataFrame(df[args.class_str])
         # df=df.applymap(lambda s: p.length_selection(s,args.min_words, args.max_words))
-        # df=df.applymap(lambda s: p.phrase_selction(s,args.min_phrase, args.max_phrase))
+        # df=df.applymap(lambda s: p.phrase_selection(s,args.min_phrase, args.max_phrase))
 
         selected_strings = df.copy()
 

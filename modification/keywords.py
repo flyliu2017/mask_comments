@@ -150,7 +150,7 @@ class Keywords_Processor(object):
         maskindex = [n[0] for n in maskwords]
         words=['<mask>' if i in maskindex else words[i] for i in range(len(words))]
 
-        return ' '.join(words) + '<separate>' + string
+        return ' '.join(words)
 
     def phrase_keywords_lists(self, texts,word_tfidf,corpus_keywords):
         phrase_lists = [s.split('，') for s in texts]
@@ -176,24 +176,27 @@ class Keywords_Processor(object):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("run",
-                        choices=["phrase", "corpus","sentence"],
+                        choices=["phrase", "corpus","sentence",'mask'],
                         help="Run type.")
 
     parser.add_argument("--data_dir",
                         default='/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask',
                         help="The data directory.")
+    parser.add_argument("--input",
+                        default='raw_test_corpus_only_mask',
+                        help="The input filename.")
     parser.add_argument("--corpus_file",
                         default='/data/share/liuchang/car_comment/mask/selected_str_5_80_p5_p10.txt',
                         help="The corpus file.")
     parser.add_argument("--suffix",
                         default='',
-                        help="The filename suffix.")
+                        help="The output filename suffix.")
     parser.add_argument("--ratio",
                         type=float,
                         default=0.3,
                         help="The keywords ratio.")
 
-    parser.add_argument("--max_features", default=None, type=int,
+    parser.add_argument("--max_features", default=50000, type=int,
                         help="max_features for tfidfvectorizer.")
 
     args = parser.parse_args()
@@ -215,11 +218,13 @@ def main():
 
     run=args.run
     if 'phrase'==run:
-        recover_mask(data_dir,'test',suffix)
+        # recover_mask(data_dir,'test',suffix)
         
-        with open(os.path.join(data_dir, 'raw_test_corpus_{}'.format(suffix)), 'r', encoding='utf8') as f:
+        # with open(os.path.join(data_dir, 'raw_test_corpus_{}'.format(suffix)), 'r', encoding='utf8') as f:
+        #     raw = f.read().splitlines()
+        with open(os.path.join(data_dir, args.input), 'r', encoding='utf8') as f:
             raw = f.read().splitlines()
-            
+
         keywords_lists=kp.phrase_keywords_lists( raw,corpus_keywords=corpus_keywords,word_tfidf=word_tfidf)
         SEP = ' ||| '
         keywords = [SEP.join(l) for l in keywords_lists]
@@ -236,6 +241,14 @@ def main():
             with open(os.path.join(data_dir, '{}_keywords_{}_{}'.format(type, suffix,args.ratio)), 'w', encoding='utf8') as f:
                 f.write('\n'.join(keywords))
 
+    elif 'mask'==run:
+        with open(os.path.join(data_dir, args.input), 'r', encoding='utf8') as f:
+            raw = f.read().splitlines()
+
+        masked = [kp.mask_unimportant_words(s, corpus_keywords=corpus_keywords, word_tfidf=word_tfidf) for s in raw]
+
+        with open(os.path.join(data_dir, args.input+'_masked_{}'.format(args.ratio)), 'w', encoding='utf8') as f:
+            f.write('\n'.join(masked))
 
     else:
         corpus = [' '.join(corpus)]

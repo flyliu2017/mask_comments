@@ -224,9 +224,15 @@ def main():
         kp = Keywords_Processor(vectorizer, num_words=num_words)
 
         if args.run=='mask_unimportant':
+            def mask_unimportant(s):
+                result=kp.mask_unimportant_words(s,  word_tfidf=word_tfidf,
+                                                 corpus_keywords=corpus_keywords,
+                                                 stop_words=STOP_WORDS,
+                                                 ratio=args.ratio)
+                result=result+'<seperate>'+s
+                return result
 
-            df=df.applymap(lambda s: kp.mask_unimportant_words(s,  word_tfidf=word_tfidf,
-                                                           corpus_keywords=corpus_keywords, stop_words=STOP_WORDS,ratio=args.ratio))
+            df=df.applymap(mask_unimportant)
 
         else:
             f=p.mask_phrase_str if args.run=='mask' else p.mask_for_context

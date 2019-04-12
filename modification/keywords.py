@@ -81,6 +81,77 @@ class Keywords_Processor(object):
 
         return ' '.join(keywords) + ' [sep] '
 
+    def mask_unimportant_words(self,string, word_tfidf: dict = None, corpus_keywords: dict = None,
+                               stop_words=None, ratio=0.3):
+        """
+
+        :param vectorizer: tfidfvectorizer
+        :param feature_names: words list from vectorizer.get_feature_names()
+        :param string: string to be masked
+        :param word_tfidf: a dict contain all words in corpus, { word : tfidf }
+        :param corpus_keywords: the keywords list that we will search keywords in it firstly.
+        :param stop_words: stop words
+        :param ratio: the ratio of mask.
+        :return:
+        """
+
+        if not string:
+            return ''
+
+        print(time.strftime("%H:%M:%S"))
+        if not corpus_keywords:
+            corpus_keywords={}
+
+        feature_names = np.array(self.feature_names)
+
+        words = string.split(' ')
+        words_and_index=list(enumerate(words))
+
+        words_and_index=[w for w in words_and_index if not w[1] in ',.?!:，。：！？、']
+
+        stop_words_index = [w for w in words_and_index if w[1] in stop_words]
+
+        num = int(round(len(words_and_index) * ratio))
+        num = max(1, num)
+
+        maskwords = []
+
+        word_tfidf={ w:word_tfidf[w[1]] for w in words_and_index}
+
+        if len(stop_words_index):
+            maskwords.extend(topn_words_from_dict(word_tfidf, num, stop_words_index ,reverse=False))
+
+        if len(maskwords) < num:
+
+            remain = [ w for w in words_and_index if not w[1] in stop_words and not w[1] in feature_names ]
+
+            if len(remain):
+                maskwords.extend(topn_words_from_dict(word_tfidf, num-len(maskwords), remain))
+
+            if len(maskwords) < num:
+                tfidf = self.vectorizer.transform([string])
+
+                d = {feature_names[n[1]]:n[0] for n in  zip(tfidf.data, tfidf.indices)}
+                zipped=[(w,d[w[1]]) for w in words_and_index if w in d and not w in corpus_keywords]
+                zipped.sort(key=lambda n: n[1])
+                zipped = [n[0] for n in zipped[:num - len(maskwords)]]
+
+                maskwords.extend(zipped)
+
+                # 这段代码会选取关键词列表中tfidf值排名低的加入mask列表，注释后可以保留关键词，即使mask数量达不到ratio要求
+
+                # if len(maskwords) < num:
+                #     if corpus_keywords:
+                #         keywords = [(word, corpus_keywords[word]) for word in words_and_index if word in corpus_keywords]
+                #
+                #         keywords.sort(key=lambda n: n[1])
+                #         maskwords.extend(keywords[:num-len(maskwords)])
+
+        maskindex = [n[0] for n in maskwords]
+        words=['<mask>' if i in maskindex else words[i] for i in range(len(words))]
+
+        return ' '.join(words) + '<separate>' + string
+
     def phrase_keywords_lists(self, texts,word_tfidf,corpus_keywords):
         phrase_lists = [s.split('，') for s in texts]
 

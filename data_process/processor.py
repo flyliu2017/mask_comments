@@ -9,11 +9,12 @@ import yaml
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-import data_process.utils as utils
+from data_process.utils import *
+from modification.keywords import Keywords_Processor
 import time
 
 
-STOP_WORDS=utils.read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
+STOP_WORDS=read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
 
 class Processor(object):
     def __init__(self, out_dir, df_path=None, raw_path=None, save_path='df.json'):
@@ -31,8 +32,6 @@ class Processor(object):
             os.makedirs(out_dir)
 
         self.out_dir = out_dir
-        self.vectorizer: TfidfVectorizer = None
-        self.feature_names=None
         self.count=0
 
     def segment(self, raw_path, output):
@@ -92,78 +91,6 @@ class Processor(object):
 
         return context + '<separate>' + label
 
-    @staticmethod
-    def mask_unimportant_words(string, vectorizer, feature_names, word_tfidf: dict = None, corpus_keywords: dict = None,
-                               stop_words=None, ratio=0.3):
-        """
-
-        :param vectorizer: tfidfvectorizer
-        :param feature_names: words list from vectorizer.get_feature_names()
-        :param string: string to be masked
-        :param word_tfidf: a dict contain all words in corpus, { word : tfidf }
-        :param corpus_keywords: the keywords list that we will search keywords in it firstly.
-        :param stop_words: stop words
-        :param ratio: the ratio of mask.
-        :return:
-        """
-
-        if not string:
-            return ''
-
-        print(time.strftime("%H:%M:%S"))
-        if not corpus_keywords:
-            corpus_keywords={}
-
-        feature_names = np.array(feature_names)
-
-        words = string.split(' ')
-        words_and_index=list(enumerate(words))
-
-        words_and_index=[w for w in words_and_index if not w[1] in ',.?!:，。：！？、']
-
-        stop_words_index = [w for w in words_and_index if w[1] in stop_words]
-
-        num = int(round(len(words_and_index) * ratio))
-        num = max(1, num)
-
-        maskwords = []
-
-        word_tfidf={ w:word_tfidf[w[1]] for w in words_and_index}
-
-        if len(stop_words_index):
-            maskwords.extend(utils.topn_words_from_dict(word_tfidf, num, stop_words_index ,reverse=False))
-
-        if len(maskwords) < num:
-
-            remain = [ w for w in words_and_index if not w[1] in stop_words and not w[1] in feature_names ]
-
-            if len(remain):
-                maskwords.extend(utils.topn_words_from_dict(word_tfidf, num-len(maskwords), remain))
-
-            if len(maskwords) < num:
-                tfidf = vectorizer.transform([string])
-
-                d = {feature_names[n[1]]:n[0] for n in  zip(tfidf.data, tfidf.indices)}
-                zipped=[(w,d[w[1]]) for w in words_and_index if w in d and not w in corpus_keywords]
-                zipped.sort(key=lambda n: n[1])
-                zipped = [n[0] for n in zipped[:num - len(maskwords)]]
-
-                maskwords.extend(zipped)
-
-                # 这段代码会选取关键词列表中tfidf值排名低的加入mask列表，注释后可以保留关键词，即使mask数量达不到ratio要求
-
-                # if len(maskwords) < num:
-                #     if corpus_keywords:
-                #         keywords = [(word, corpus_keywords[word]) for word in words_and_index if word in corpus_keywords]
-                #
-                #         keywords.sort(key=lambda n: n[1])
-                #         maskwords.extend(keywords[:num-len(maskwords)])
-
-        maskindex = [n[0] for n in maskwords]
-        words=['<mask>' if i in maskindex else words[i] for i in range(len(words))]
-
-        return ' '.join(words) + '<separate>' + string
-
     def generate_corpus(self, df, suffix=''):
         l = df.values.flatten()
         l = [s for s in l if s != '']
@@ -195,11 +122,11 @@ class Processor(object):
 
         return prefixed_df
 
-    def init_vectorizer(self):
-
-        self.vectorizer = TfidfVectorizer(token_pattern=r'(?:^|(?<=\s))([^\s]+)(?=\s|$)', stop_words=STOP_WORDS,max_features=30000)
-        self.vectorizer.fit(self.comments_str.values.flatten())
-        self.feature_names = np.array(self.vectorizer.get_feature_names())
+    # def init_vectorizer(self):
+    #
+    #     self.vectorizer = TfidfVectorizer(token_pattern=r'(?:^|(?<=\s))([^\s]+)(?=\s|$)', stop_words=STOP_WORDS,max_features=30000)
+    #     self.vectorizer.fit(self.comments_str.values.flatten())
+    #     self.feature_names = np.array(self.vectorizer.get_feature_names())
 
     def generate_yaml(self, suffix):
         d = {'model_dir': 'transformer_' + suffix,
@@ -213,8 +140,8 @@ class Processor(object):
                   },
              'train': {'train_steps': 100000},
              'eval' : {'eval_delay' : 1800 },
-             'params': {'decay_params':{'warmup_steps' : 1000 },
-                        'learning_rate': 2.0}
+             'params': {'decay_params':{'warmup_steps' : 8000 },
+                        'learning_rate': 1.0}
              }
         with open(os.path.join(self.out_dir, 'train.yml'), 'w', encoding='utf8') as f:
             f.write(yaml.dump(d))
@@ -286,14 +213,20 @@ def main():
 
         selected_strings = df.copy()
 
+        corpus = read_to_list('/data/share/liuchang/car_comment/mask/selected_str_5_80_p5_p10.txt')
+        STOP_WORDS = read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
+        corpus_keywords = read_to_dict('/data/share/liuchang/car_comment/mask/corpus_keywords', '\t', float, 1000)
+        word_tfidf = read_to_dict('/data/share/liuchang/car_comment/mask/word_tfidf', '\t', float, None)
+        num_words = read_to_list('/data/share/liuchang/car_comment/mask/mask_comments/data_process/key_words_all.txt')
+
+        vectorizer = TfidfVectorizer(token_pattern=r'(?:^|(?<=\s))([^\s]+)(?=\s|$)', stop_words=STOP_WORDS,
+                                     max_features=args.max_features)
+        vectorizer.fit(corpus)
+        kp = Keywords_Processor(vectorizer, num_words=num_words)
+
         if args.run=='mask_unimportant':
-            if not p.vectorizer:
-                p.init_vectorizer()
 
-            corpus_keywords = utils.read_to_dict('/data/share/liuchang/car_comment/mask/corpus_keywords', '\t', float,1000)
-            word_tfidf = utils.read_to_dict('/data/share/liuchang/car_comment/mask/word_tfidf', '\t', float, None)
-
-            df=df.applymap(lambda s: p.mask_unimportant_words(s, p.vectorizer, p.feature_names, word_tfidf=word_tfidf,
+            df=df.applymap(lambda s: kp.mask_unimportant_words(s,  word_tfidf=word_tfidf,
                                                            corpus_keywords=corpus_keywords, stop_words=STOP_WORDS,ratio=args.ratio))
 
         else:
@@ -310,8 +243,6 @@ def main():
         corpus ,labels=zip(*strings)
 
         if args.run!='mask_unimportant' and ''!=args.add_keywords:
-            if not p.vectorizer:
-                p.init_vectorizer()
 
             if 'whole'==args.add_keywords:
 
@@ -321,10 +252,7 @@ def main():
             else:
                 kw_strings=labels
 
-            corpus_keywords=utils.read_to_dict('/data/share/liuchang/car_comment/mask/corpus_keywords','\t',float,1000)
-            word_tfidf=utils.read_to_dict('/data/share/liuchang/car_comment/mask/word_tfidf','\t',float,None)
-
-            keywords = [ utils.extract_keywords(p.vectorizer,p.feature_names,s,word_tfidf=word_tfidf,
+            keywords = [ kp.extract_keywords(s,word_tfidf=word_tfidf,
                                                 corpus_keywords=corpus_keywords,stop_words=STOP_WORDS)
                          for s in kw_strings]
 
@@ -338,17 +266,17 @@ def main():
 
     elif args.run == 'compare_mask':
 
-        p, l, c = map(utils.read_to_list, [args.preds_path, args.labels_path, args.corpus_path])
+        p, l, c = map(read_to_list, [args.preds_path, args.labels_path, args.corpus_path])
 
-        utils.compare_mask(p, l, c, os.path.join(output_dir, args.compare_path))
+        compare_mask(p, l, c, os.path.join(output_dir, args.compare_path))
 
     elif args.run == 'compare_result':
-        p, l, c = map(utils.read_to_list, [args.preds_path, args.labels_path, args.corpus_path])
+        p, l, c = map(read_to_list, [args.preds_path, args.labels_path, args.corpus_path])
 
-        utils.compare_result(p, l, c, os.path.join(output_dir, args.compare_path))
+        compare_result(p, l, c, os.path.join(output_dir, args.compare_path))
 
     elif args.run == 'bleu':
-        utils.file_bleu(args.preds_path,
+        file_bleu(args.preds_path,
                             args.labels_path,
                             os.path.join(output_dir, args.bleu_path))
 
@@ -368,9 +296,9 @@ def generate_dataset(corpus, labels, output_dir, slice_ratios, suffix):
 
     shuffle_index = np.random.permutation(list(range(len(corpus))))
     paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-    utils.slice_and_save(corpus, shuffle_index, slice_ratios, paths)
+    slice_and_save(corpus, shuffle_index, slice_ratios, paths)
     paths = [os.path.join(output_dir, '{}_labels_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-    utils.slice_and_save(labels, shuffle_index, slice_ratios, paths)
+    slice_and_save(labels, shuffle_index, slice_ratios, paths)
 
 
 if __name__ == "__main__":

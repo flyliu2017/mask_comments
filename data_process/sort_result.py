@@ -127,9 +127,9 @@ def main():
         results_with_score.sort(key=lambda n: n[-1], reverse=reverse)
         sorted_result = [r + '\t' + str(s) for r, _, s in results_with_score]
         sorted_features = [f for _, f, _ in results_with_score]
-        with open(os.path.join(data_dir, 'results_sorted_by_{}'.format(sort)), 'w', encoding='utf8') as f:
+        with open(os.path.join(data_dir, 'results_sorted_by_{}_{}'.format(sort,args.suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(sorted_result))
-        with open(os.path.join(data_dir, 'comparation_sorted_by_{}'.format(sort)), 'w', encoding='utf8') as f:
+        with open(os.path.join(data_dir, 'comparation_sorted_by_{}_{}'.format(sort,args.suffix)), 'w', encoding='utf8') as f:
             for r, c in zip(sorted_result, sorted_features):
                 f.write(r + '\n' + c + '\n\n')
         scores = [n[-1] for n in results_with_score]

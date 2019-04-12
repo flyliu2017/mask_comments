@@ -3,6 +3,7 @@ import json
 from rouge import Rouge
 import requests
 import time
+from tensorflow.contrib import predictor
 
 UNK_ID = 0
 SOS_ID = 1
@@ -27,10 +28,11 @@ def read_vocab(vocab_filepath):
 
 
 class CalScore(object):
-    def __init__(self, model_path='ngram_probs_model.json'):
+    def __init__(self, model_path='unigram_probs_model.json'):
         self.rouge = Rouge()  # codes from https://github.com/pltrdy/rouge
         self.unigram_probs = json.load(open(model_path))
         self.w2i = read_vocab('/data/xueyou/car/comment/vocab.txt')
+        self.lm=predictor.from_saved_model("/data/xueyou/car/comment/lm/score/0/")
 
     def get_tokens(self, content):
         tokens = content.split()
@@ -77,25 +79,30 @@ class CalScore(object):
         source_tokens = padding(source_tokens, max_len)
         target_tokens = padding(target_tokens, max_len)
 
-        instances = [{"source_tokens": x, "sequence_length": l, "target_tokens": y} for x, l,y in
-                     zip(source_tokens,len_tokens, target_tokens)]
+        # instances = [{"source_tokens": x, "sequence_length": l, "target_tokens": y} for x, l,y in
+        #              zip(source_tokens,len_tokens, target_tokens)]
+        instances = {"source_tokens": source_tokens, "sequence_length": len_tokens, "target_tokens": target_tokens}
         data = {
             "signature_name": "predict",
             "instances": instances
         }
 
-        response = requests.post("https://car-comment-score-tf.aidigger.com/v1/models/car-comment-score:predict", json=data).json()
-        if 'error' in response:
-            raise BaseException(response['error'])
+        # try:
+        #     response = requests.post("http://192.168.3.11:9193/predict",json=instances).json()
+        # except Exception as e:
+        #     raise ConnectionError(e)
+        # response = requests.post("https://car-comment-score-tf.aidigger.com/v1/models/car-comment-score:predict", json=data).json()
 
-        ret_item = response['predictions']
-        ppls = [r['ppl'] for r in ret_item]
+        # if 'error' in response:
+        #     raise BaseException(response['error'])
+
+        ppls=self.lm(instances)['ppl']
         return ppls
 
     def cal_slor_with_ppl(self, rewrite_tokens, ppl):
         len_tokens = len(rewrite_tokens.split())
         ## 计算SLOR分数: -ln(ppl)-ln(P(S))/|S|
-        unigram_probs = 1.0
+        unigram_probs = 0
         for token in rewrite_tokens.split():
             token = token.lower()
             if token in self.unigram_probs:
@@ -104,8 +111,8 @@ class CalScore(object):
                 token_prob = self.unigram_probs['<unk>']
                 print('assert token: {} not found...'.format(token))
 
-            unigram_probs *= token_prob
-        slor_score = -np.log(ppl) - np.log(unigram_probs) / len_tokens
+            unigram_probs += np.log(token_prob)
+        slor_score = -np.log(ppl) - unigram_probs / len_tokens
         return slor_score
 
     def cal_slor_with_entropy(self, rewrite_tokens, entropy_loss):
@@ -153,7 +160,7 @@ def demo():
     # rewrite_tokens = ["性价比 不错"]  # 模型改写后评论，单词之间以空格相隔
 
     # load unigram model
-    unigram_probs_filepath = './ngram_probs_model.json'
+    unigram_probs_filepath = './unigram_probs_model.json'
 
     model = CalScore(unigram_probs_filepath)
 

@@ -37,7 +37,7 @@ class Keywords_Processor(object):
             corpus_keywords = {}
 
         words = string.split(' ')
-        words = [w for w in words if w.strip() != '']
+        words = [w for w in words if not w.strip() in ',.?!:，。：！？、']
 
         words_set = set(words)
         stop_words_set = {w for w in words_set if w in stop_words}
@@ -91,6 +91,7 @@ class Keywords_Processor(object):
 
         return keywords_lists
 
+
     def corpus_keywords(self, corpus):
         tfidf=self.vectorizer.transform(corpus).toarray()[0]
         word_with_tfidf=list(zip(self.feature_names,tfidf))
@@ -104,7 +105,7 @@ class Keywords_Processor(object):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("run",
-                        choices=["phrase", "corpus"],
+                        choices=["phrase", "corpus","sentence"],
                         help="Run type.")
 
     parser.add_argument("--data_dir",
@@ -116,6 +117,10 @@ def main():
     parser.add_argument("--suffix",
                         default='',
                         help="The filename suffix.")
+    parser.add_argument("--ratio",
+                        type=float,
+                        default=0.3,
+                        help="The keywords ratio.")
 
     parser.add_argument("--max_features", default=None, type=int,
                         help="max_features for tfidfvectorizer.")
@@ -150,6 +155,16 @@ def main():
 
         with open(os.path.join(data_dir, 'phrase_keywords_lists_{}'.format(suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(keywords))
+
+    elif 'sentence'==run:
+        for type in ['train','eval','test']:
+            with open(os.path.join(data_dir, 'raw_{}_corpus_{}'.format(type, suffix)), 'r', encoding='utf8') as f:
+                txts = f.read().splitlines()
+            keywords = [kp.extract_keywords(s, word_tfidf, corpus_keywords, stop_words=STOP_WORDS,ratio=args.ratio) for s in txts]
+
+            with open(os.path.join(data_dir, '{}_keywords_{}_{}'.format(type, suffix,args.ratio)), 'w', encoding='utf8') as f:
+                f.write('\n'.join(keywords))
+
 
     else:
         corpus = [' '.join(corpus)]

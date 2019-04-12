@@ -9,7 +9,6 @@ import numpy as np
 import os
 from collections import defaultdict
 
-from data_process.PEM import PEM
 from data_process.cal_scores import CalScore
 from sklearn.svm import SVR
 
@@ -67,14 +66,14 @@ def phrase_pairs_from_dicts(s2t_dict, t2s_dict, s_txt, t_txt):
                 if not s_reverse or s_reverse - s_index:
                     continue
 
-                l.append((tuple(s[i:i + length]), tuple(t[t_min:t_max + 1])))
+                l.append((' '.join(s[i:i + length]), ' '.join(t[t_min:t_max + 1])))
 
         pairs.append(l)
 
     return pairs
 
 
-def pairs_to_phrase_freq(pairs, out_dir):
+def pairs_to_phrase_freq(pairs, out_dir,min_phrase_prob=0,min_z2e_prob=0):
     # 太消耗内存
     # phrases = [n[0] for l in pairs for n in l]
     # phrase_log_prob = FreqDist(phrases)
@@ -102,12 +101,18 @@ def pairs_to_phrase_freq(pairs, out_dir):
             fd = z2e_prob_dist.setdefault(zh, FreqDist())
             fd.update([en])
 
+    N=sum([z2e_prob_dist[zh].N() for zh in z2e_prob_dist])
+    min_phrase_num=np.ceil(N*min_phrase_prob)
+
     for zh in z2e_prob_dist:
         print(time.strftime("%H:%M:%S"))
         n = z2e_prob_dist[zh].N()
-        phrase_log_prob[zh] = n
+        if n>=min_phrase_num:
+            phrase_log_prob[zh] = n
         for en in z2e_prob_dist[zh]:
-            z2e_prob_dist[zh][en] = z2e_prob_dist[zh][en] / n
+            prob=z2e_prob_dist[zh][en]/n
+            if prob>=min_z2e_prob:
+                z2e_prob_dist[zh][en] =prob
 
     n = phrase_log_prob.N()+0.5
     for k in phrase_log_prob:
@@ -142,22 +147,22 @@ def sentence_segmentation(sentence, phrase_log_prob):
     oov_value=phrase_log_prob['<oov>']
     phrase_log_prob=defaultdict(lambda :oov_value,phrase_log_prob)
 
-    words = sentence.strip().split(' ')
+    words = sentence.split(' ')
     length = len(words)
     prob_list = [[] for _ in range(length)]
-    prob_list[0] = [[0], phrase_log_prob[tuple(words[0])]]
+    prob_list[0] = [[0], phrase_log_prob[words[0]]]
     for i in range(1, length):
-        max_prob = prob_list[i - 1][1] + phrase_log_prob[tuple(words[i])]
+        max_prob = prob_list[i - 1][1] + phrase_log_prob[words[i]]
         prob_list[i] = [prob_list[i - 1][0] + [i], max_prob]
         for j in range(max(0, i - 4), i - 1):
-            if tuple(words[j + 1:i + 1]) in phrase_log_prob:
-                prob = phrase_log_prob[tuple(words[j + 1:i + 1])] + prob_list[j][1]
+            if ' '.join(words[j + 1:i + 1]) in phrase_log_prob:
+                prob = phrase_log_prob[' '.join(words[j + 1:i + 1])] + prob_list[j][1]
                 if prob > max_prob:
                     prob_list[i] = [prob_list[j][0] + [i], prob]
                     max_prob = prob
 
     segment_index = prob_list[-1][0] + [length]
-    phrases = [tuple(words[segment_index[i]:segment_index[i + 1]]) for i in range(len(segment_index) - 1)]
+    phrases = [' '.join(words[segment_index[i]:segment_index[i + 1]]) for i in range(len(segment_index) - 1)]
 
     return phrases, np.exp(prob_list[-1][1])
 
@@ -203,6 +208,7 @@ def bag_of_pivot_language_ngrams(pivot_language_phrases_freqdist):
 
 
 def sentence_bpng(sentence, phrase_log_prob, z2e_prob_dist):
+    print(time.strftime("%y-%m-%d_%H:%M:%S"))
     phrases, _ = sentence_segmentation(sentence, phrase_log_prob)
     ngrams_bag, _ = bag_of_pivot_language_ngrams([z2e_prob_dist[phrase] if phrase in z2e_prob_dist else {phrase:1.0} for phrase in phrases])
     bpng = {}
@@ -211,6 +217,7 @@ def sentence_bpng(sentence, phrase_log_prob, z2e_prob_dist):
     return bpng
 
 def sentence_ngrams(sentence):
+    print(time.strftime("%y-%m-%d_%H:%M:%S"))
     sentence = sentence.strip()
     if not sentence:
         raise ValueError('Empty sentence!')
@@ -309,27 +316,20 @@ if __name__ == '__main__':
 
     sentences,paraphrases,scores=list(zip(*paraphrase_scores))
 
-    pem= PEM(z2e_prob_dist, fd, scorer)
-
-    features=[pem.pair_to_features(s,p) for s ,p in zip(sentences,paraphrases)]
-
-
     # svm_path = os.path.join(data_dir, 'svm.pickle')
-    svm_path = '/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask/svm.pickle'
-
-    if not os.path.isfile(svm_path):
-        svm = SVR()
-        svm.fit(features,scores)
-
-        with open(svm_path, 'wb') as f:
-            pickle.dump(svm,f)
-    else:
-        with open(svm_path, 'rb') as f:
-            svm=pickle.load(f)
-
-    pem_scores=pem.pem_score(svm,sentences,paraphrases)
-
-
-
-    print(pem_scores)
+    # svm_path = '/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask/svm.pickle'
+    #
+    # if not os.path.isfile(svm_path):
+    #     svm = SVR()
+    #     svm.fit(features,scores)
+    #
+    #     with open(svm_path, 'wb') as f:
+    #         pickle.dump(svm,f)
+    # else:
+    #     with open(svm_path, 'rb') as f:
+    #         svm=pickle.load(f)
+    #
+    # pem_scores=pem.pem_score(svm,sentences,paraphrases)
+    #
+    # print(pem_scores)
 

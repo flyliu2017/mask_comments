@@ -1,6 +1,7 @@
+#coding=utf8
 import numpy as np
 import json
-from rouge import Rouge
+# from rouge import Rouge
 import requests
 import time
 from tensorflow.contrib import predictor
@@ -29,7 +30,7 @@ def read_vocab(vocab_filepath):
 
 class CalScore(object):
     def __init__(self, model_path='unigram_probs_model.json'):
-        self.rouge = Rouge()  # codes from https://github.com/pltrdy/rouge
+        # self.rouge = Rouge()  # codes from https://github.com/pltrdy/rouge
         self.unigram_probs = json.load(open(model_path))
         self.w2i = read_vocab('/data/xueyou/car/comment/vocab.txt')
         self.lm=predictor.from_saved_model("/data/xueyou/car/comment/lm/score/0/")
@@ -50,14 +51,14 @@ class CalScore(object):
     #     """通过预训练的语言模型计算ppl"""
     #     print(time.strftime("%H:%M:%S"))
     #     rewrite_tokens = rewrite_tokens.strip('，')
-    #     source_tokens, target_tokens = self.get_tokens(rewrite_tokens)
+    #     sources, target_tokens = self.get_tokens(rewrite_tokens)
     #
-    #     len_tokens = len(source_tokens)
-    #     source_tokens = padding([source_tokens], len_tokens)
+    #     len_tokens = len(sources)
+    #     sources = padding([sources], len_tokens)
     #     target_tokens = padding([target_tokens], len_tokens)
     #
-    #     instances = [{"source_tokens": x, "sequence_length": l, "target_tokens": y} for x, l, y in
-    #                  zip(source_tokens, [len_tokens], target_tokens)]
+    #     instances = [{"sources": x, "sequence_length": l, "target_tokens": y} for x, l, y in
+    #                  zip(sources, [len_tokens], target_tokens)]
     #     data = {
     #         "signature_name": "predict",
     #         "instances": instances
@@ -69,24 +70,21 @@ class CalScore(object):
     #     return ppl
     def get_ppl_from_lm(self, rewrite_tokens):
         """通过预训练的语言模型计算ppl"""
-        print(time.strftime("%H:%M:%S"))
+
         rewrite_tokens = [t.strip('，') for t in rewrite_tokens]
         tokens=map(self.get_tokens,rewrite_tokens)
         source_tokens, target_tokens = zip(*tokens)
 
-        len_tokens = [len(t) for t in source_tokens]
-        max_len=max(len_tokens)
-        source_tokens = padding(source_tokens, max_len)
-        target_tokens = padding(target_tokens, max_len)
+        
 
-        # instances = [{"source_tokens": x, "sequence_length": l, "target_tokens": y} for x, l,y in
-        #              zip(source_tokens,len_tokens, target_tokens)]
-        instances = {"source_tokens": source_tokens, "sequence_length": len_tokens, "target_tokens": target_tokens}
-        data = {
-            "signature_name": "predict",
-            "instances": instances
-        }
+        # instances = [{"sources": x, "sequence_length": l, "target_tokens": y} for x, l,y in
+        #              zip(sources,len_tokens, target_tokens)]
 
+
+        # data = {
+        #     "signature_name": "predict",
+        #     "instances": instances
+        # }
         # try:
         #     response = requests.post("http://192.168.3.11:9193/predict",json=instances).json()
         # except Exception as e:
@@ -96,7 +94,24 @@ class CalScore(object):
         # if 'error' in response:
         #     raise BaseException(response['error'])
 
-        ppls=self.lm(instances)['ppl']
+        ppls=[]
+        batch_size=200
+        loops=int(np.ceil(len(source_tokens)/batch_size))
+        for i in range(loops):
+            sources=source_tokens[batch_size*i:batch_size*i+batch_size]
+            targets=target_tokens[batch_size*i:batch_size*i+batch_size]
+
+            len_tokens = [len(t) for t in sources]
+            max_len = max(len_tokens)
+            sources = padding(sources, max_len)
+            targets = padding(targets, max_len)
+            print(time.strftime("%H:%M:%S"))
+            instances = {"source_tokens": sources,
+                         "sequence_length": len_tokens,
+                         "target_tokens": targets}
+
+            ppls.extend(self.lm(instances)['ppl'])
+
         return ppls
 
     def cal_slor_with_ppl(self, rewrite_tokens, ppl):

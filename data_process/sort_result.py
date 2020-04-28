@@ -5,6 +5,7 @@ import argparse
 from gensim.models import Word2Vec
 import re
 import numpy as np
+from nltk.probability import ConditionalFreqDist
 
 def get_slor(scorer : CalScore, results):
     batch=10
@@ -20,7 +21,7 @@ def get_slor(scorer : CalScore, results):
     return slor
 
 def get_wmd(model, features, predictions):
-    wmd=[model.wv.wmdistance(f, p) for f, p in zip(features, predictions)]
+    wmd=[model.wv.wmdistance(f.split(), p.split()) for f, p in zip(features, predictions)]
     
     return wmd
 
@@ -46,10 +47,10 @@ def get_distance(features, predictions):
 def generate_tsv(data_dir, features, results):
     classes = read_to_list(os.path.join(data_dir, 'classes_only_mask'))
 
-    scorer = CalScore('/data/share/liuchang/car_comment/mask/mask_comments/data_process/unigram_model.json')
+    scorer = CalScore('/nfs/users/liuchang/car_comment/mask/mask_comments/data_process/unigram_model.json')
     slor = get_slor(scorer, results)
 
-    corpus_path = '/data/share/liuchang/car_comment/mask/selected_str_5_80.txt'
+    corpus_path = '/nfs/users/liuchang/car_comment/mask/selected_str_5_80.txt'
     model = Word2Vec(corpus_file=corpus_path)
     wmd = get_wmd(model, features, results)
 
@@ -70,7 +71,7 @@ def main():
                         choices=["slor", "wmd","distance","total"],
                         help="Run type.")
     parser.add_argument("--data_dir",
-                        default='/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask',
+                        default='/nfs/users/liuchang/car_comment/mask/p5_p10/keywords/only_mask',
                         help="The data directory.")
     parser.add_argument("--result_file",
                         default='modify/result',
@@ -94,7 +95,7 @@ def main():
     results = os.path.join(data_dir, args.result_file)
     results = read_to_list(results)
     features = read_to_list(os.path.join(data_dir, args.features_file))
-    corpus_path = '/data/share/liuchang/car_comment/mask/selected_str_5_80.txt'
+    corpus_path = '/nfs/users/liuchang/car_comment/mask/selected_str_5_80.txt'
 
     sort = args.sort
     reverse = args.reverse
@@ -109,7 +110,7 @@ def main():
             num = len(results)
 
         if sort == 'slor':
-            scorer = CalScore('/data/share/liuchang/car_comment/mask/mask_comments/data_process/unigram_model.json')
+            scorer = CalScore('/nfs/users/liuchang/car_comment/mask/mask_comments/data_process/unigram_model.json')
             score = get_slor(scorer, results[:num])
 
         elif 'distance'==sort:
@@ -137,7 +138,7 @@ def main():
         scores.append(average)
         print("average score: {}".format(average))
         scores = [str(s) for s in scores]
-        with open(os.path.join(data_dir, sort), 'w', encoding='utf8') as f:
+        with open(os.path.join(data_dir, '{}_{}'.format(sort,args.suffix)), 'w', encoding='utf8') as f:
             f.write('\n'.join(scores))
 
 

@@ -1,60 +1,63 @@
-import tempfile
-import shutil
-import os
-import time
-
-import numpy as np
-
-from joblib import Parallel, delayed
-from joblib import load, dump
-
-def sum_row(input, output, i):
-    """Compute the sum of a row in input and store it in output"""
-    sum_ = input[i, :].sum()
-    print("[Worker %d] Sum for row %d is %f" % (os.getpid(), i, sum_))
-    output[i] = sum_
+from data_process.keywords import *
+from multiprocessing.pool import Pool
 
 
-if __name__ == "__main__":
-    rng = np.random.RandomState(42)
-    folder = tempfile.mkdtemp()
-    samples_name = os.path.join(folder, 'samples')
-    sums_name = os.path.join(folder, 'sums')
-    try:
-        # Generate some data and an allocate an output buffer
-        samples = rng.normal(size=(30, int(1e7)))
 
-        # Pre-allocate a writeable shared memory map as a container for the
-        # results of the parallel computation
-        sums = np.memmap(sums_name, dtype=samples.dtype,
-                         shape=samples.shape[0], mode='w+')
 
-        # Dump the input data to disk to free the memory
-        dump(samples, samples_name)
+def mask(s):
+    return kp.mask_unimportant_words(s, ratio=ratio)
 
-        # Release the reference on the original in memory array and replace it
-        # by a reference to the memmap array so that the garbage collector can
-        # release the memory before forking. gc.collect() is internally called
-        # in Parallel just before forking.
-        samples = load(samples_name, mmap_mode='r')
+if __name__ == '__main__':
 
-        # Fork the worker processes to perform computation concurrently
-        print(time.strftime("%y-%m-%d_%H:%M:%S"))
-        Parallel(n_jobs=4)(delayed(sum_row)(samples, sums, i)
-                           for i in range(samples.shape[0]))
+    data_dir = '/nfs/users/liuchang/car_comment/mask/p5_p10/keywords'
 
-        print(time.strftime("%y-%m-%d_%H:%M:%S"))
-        # Compare the results from the output buffer with the ground truth
-        print("Expected sums computed in the parent process:")
-        expected_result = samples.sum(axis=1)
-        print(expected_result)
+    corpus = read_to_list('/nfs/users/liuchang/car_comment/mask/selected_str_5_80_p5_p10.txt')
 
-        print("Actual sums computed by the worker processes:")
-        print(sums)
+    STOP_WORDS = read_to_list('/nfs/users/liuchang/car_comment/mask/stop_words')
+    corpus_keywords = read_to_dict('/nfs/users/liuchang/car_comment/mask/corpus_keywords', '\t', float, 1000)
+    word_tfidf = read_to_dict('/nfs/users/liuchang/car_comment/mask/word_tfidf', '\t', float, None)
+    num_words = read_to_list('/nfs/users/liuchang/car_comment/mask/mask_comments/data_process/key_words_all.txt')
 
-        assert np.allclose(expected_result, sums)
-    finally:
-        try:
-            shutil.rmtree(folder)
-        except:
-            print("Failed to delete: " + folder)
+    vectorizer = TfidfVectorizer(token_pattern=r'(?:^|(?<=\s))([^\s]+)(?=\s|$)', stop_words=STOP_WORDS,
+                                 max_features=50000)
+    vectorizer.fit(corpus)
+    kp = Keywords_Processor(vectorizer,
+                            stop_words=None,
+                            word_tfidf=word_tfidf,
+                            corpus_keywords=corpus_keywords,
+                            num_words=num_words)
+
+    ratio = 0.7
+    suffix = 'only_mask'
+
+    process_num=8
+    pool = Pool(process_num)
+    times = []
+
+    for type in [ 'train','eval','test']:
+        with open(os.path.join(data_dir, 'only_mask/no_mask_{}_corpus_{}'.format(type, suffix)), 'r', encoding='utf8') as f:
+            raw = f.read().splitlines()
+
+        prefix = [re.search(r'__.+?__ __.+?__', s).group() for s in raw]
+        no_prefix = [raw[i].split(prefix[i])[-1].strip() for i in range(len(raw))]
+
+        time1=time.time()
+        chunksize=(len(no_prefix)+process_num-1)//process_num
+        masked = pool.map(mask,no_prefix,chunksize=chunksize)
+        time2=time.time()
+        # print('cost time:{}'.format(time2-time1))
+        times.append(time2-time1)
+
+        masked = [p + m for p, m in zip(prefix, masked)]
+
+        with open(os.path.join(data_dir, '{}_corpus_masked_{}'.format(type, ratio)), 'w', encoding='utf8') as f:
+            f.write('\n'.join(masked))
+        masked = [re.sub(r'(<mask> )+<mask>', '<mask>', s) for s in masked]
+        with open(os.path.join(data_dir, '{}_corpus_infilling_masked_{}_keep_comma'.format(type, ratio)), 'w',
+                  encoding='utf8') as f:
+            f.write('\n'.join(masked))
+        masked = [re.sub(r'<mask>( <mask>| ，)+', '<mask>', s) for s in masked]
+        with open(os.path.join(data_dir, '{}_corpus_infilling_masked_{}'.format(type, ratio)), 'w', encoding='utf8') as f:
+            f.write('\n'.join(masked))
+
+    print(times)

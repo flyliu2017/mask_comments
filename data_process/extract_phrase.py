@@ -144,11 +144,10 @@ def sentence_segmentation(sentence, phrase_log_prob):
     if not sentence:
         raise ValueError('Empty sentence!')
 
-    oov_value=phrase_log_prob['<oov>']
-    phrase_log_prob=defaultdict(lambda :oov_value,phrase_log_prob)
-
-    words = sentence.split(' ')
+    words = sentence.split()
+    words=list(filter(None,words))
     length = len(words)
+
     prob_list = [[] for _ in range(length)]
     prob_list[0] = [[0], phrase_log_prob[words[0]]]
     for i in range(1, length):
@@ -158,7 +157,7 @@ def sentence_segmentation(sentence, phrase_log_prob):
             if ' '.join(words[j + 1:i + 1]) in phrase_log_prob:
                 prob = phrase_log_prob[' '.join(words[j + 1:i + 1])] + prob_list[j][1]
                 if prob > max_prob:
-                    prob_list[i] = [prob_list[j][0] + [i], prob]
+                    prob_list[i] = [prob_list[j][0] + [j+1], prob]
                     max_prob = prob
 
     segment_index = prob_list[-1][0] + [length]
@@ -208,7 +207,8 @@ def bag_of_pivot_language_ngrams(pivot_language_phrases_freqdist):
 
 
 def sentence_bpng(sentence, phrase_log_prob, z2e_prob_dist):
-    print(time.strftime("%y-%m-%d_%H:%M:%S"))
+    print(str('pid:{} ||'.format(os.getpid())),time.strftime("%y-%m-%d_%H:%M:%S"))
+
     phrases, _ = sentence_segmentation(sentence, phrase_log_prob)
     ngrams_bag, _ = bag_of_pivot_language_ngrams([z2e_prob_dist[phrase] if phrase in z2e_prob_dist else {phrase:1.0} for phrase in phrases])
     bpng = {}
@@ -217,7 +217,7 @@ def sentence_bpng(sentence, phrase_log_prob, z2e_prob_dist):
     return bpng
 
 def sentence_ngrams(sentence):
-    print(time.strftime("%y-%m-%d_%H:%M:%S"))
+    print(str('pid:{} ||'.format(os.getpid())),time.strftime("%y-%m-%d_%H:%M:%S"))
     sentence = sentence.strip()
     if not sentence:
         raise ValueError('Empty sentence!')
@@ -261,18 +261,18 @@ if __name__ == '__main__':
 
     # if not 'CUDA_VISIBLE_DEVICES' in os.environ:
     os.environ['CUDA_VISIBLE_DEVICES']='2'
-    data_dir='/data/share/liuchang/berkeleyaligner/output_chinese'
+    data_dir='/nfs/users/liuchang/berkeleyaligner/output_chinese'
     pairs_pickle=os.path.join(data_dir,'training.en-ch.pairs.pickle')
 
     if not os.path.isfile(pairs_pickle):
-        with open('/data/share/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.align', 'r', encoding='utf8') as f:
+        with open('/nfs/users/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.align', 'r', encoding='utf8') as f:
             aligns = f.readlines()
 
         zh_en_dict, en_zh_dict = aligns_to_dicts(aligns)
 
-        with open('/data/share/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.ch', 'r', encoding='utf8') as f:
+        with open('/nfs/users/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.ch', 'r', encoding='utf8') as f:
             zhtxt = f.read().splitlines()
-        with open('/data/share/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.en', 'r', encoding='utf8') as f:
+        with open('/nfs/users/liuchang/berkeleyaligner/output_chinese/itg_input/supervised-train/train.en', 'r', encoding='utf8') as f:
             entxt = f.read().splitlines()
 
         zhtxt = [s.split(' ') for s in zhtxt]
@@ -305,10 +305,10 @@ if __name__ == '__main__':
     # print(ngrams_bag)
     # print(ngrams_at_head)
 
-    scorer = CalScore('/data/share/liuchang/car_comment/mask/mask_comments/data_process/unigram_probs_model.json')
+    scorer = CalScore('/nfs/users/liuchang/car_comment/mask/mask_comments/data_process/unigram_probs_model.json')
 
 
-    with open('/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask/rewrite_pairs_scores.tsv', 'r',
+    with open('/nfs/users/liuchang/car_comment/mask/p5_p10/keywords/only_mask/rewrite_pairs_scores.tsv', 'r',
               encoding='utf8') as f:
         paraphrase_scores = f.read().splitlines()
 
@@ -317,7 +317,7 @@ if __name__ == '__main__':
     sentences,paraphrases,scores=list(zip(*paraphrase_scores))
 
     # svm_path = os.path.join(data_dir, 'svm.pickle')
-    # svm_path = '/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask/svm.pickle'
+    # svm_path = '/nfs/users/liuchang/car_comment/mask/p5_p10/keywords/only_mask/svm.pickle'
     #
     # if not os.path.isfile(svm_path):
     #     svm = SVR()

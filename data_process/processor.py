@@ -3,18 +3,14 @@ import argparse
 import jieba
 import json
 import os
-import re
 import yaml
 
-import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from data_process.utils import *
-from modification.keywords import Keywords_Processor
-import time
+from data_process.keywords import Keywords_Processor
 
-
-STOP_WORDS=read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
+STOP_WORDS=read_to_list('/nfs/users/liuchang/car_comment/mask/stop_words')
 
 class Processor(object):
     def __init__(self, out_dir, df_path=None, raw_path=None, save_path='df.json'):
@@ -25,7 +21,7 @@ class Processor(object):
                 self.segment(raw_path, save_path)
         else:
             self.df = pd.read_json(df_path, orient='index')
-            self.label_list = self.df.columns[3:]
+            self.label_list = self.df.columns[:-1]
             self.comments_str=self.df[self.label_list]
 
         if not os.path.isdir(out_dir):
@@ -116,7 +112,7 @@ class Processor(object):
                 prefixed_df[l] = pd.Series(['__' + l + '__ '] * len(prefixed_df)).str.cat(
                     prefixed_df[l])
             if add_types:
-                types = self.df['question_forum'].map(lambda s: '__' + s + '__ ')
+                types = self.df['seriesname'].map(lambda s: '__' + s + '__ ')
                 prefixed_df[l] = types.str.cat(prefixed_df[l])
 
         return prefixed_df
@@ -145,15 +141,19 @@ class Processor(object):
         with open(os.path.join(self.out_dir, 'train.yml'), 'w', encoding='utf8') as f:
             f.write(yaml.dump(d))
 
+def mask(s):
+    global kp,args
+    return kp.mask_unimportant_words(s,ratio=args.ratio)
 
-def main():
+if __name__ == '__main__':
+
     parser = argparse.ArgumentParser()
     parser.add_argument("run",
                         choices=["mask", "compare_mask","compare_result", "bleu", "context","mask_unimportant"],
                         help="Run type.")
 
     parser.add_argument("--df_path",
-                        default='/data/share/liuchang/car_comment/mask/comments_5_80_p5_p10.json',
+                        default='/nfs/users/liuchang/car_comment/mask/df_5_80_p5_p10.json',
                         help="The path to dataframe file. If file not exist, dataframe will be saved at this location.")
     parser.add_argument("--raw_path",
                         help="The path to raw data file.")
@@ -207,28 +207,29 @@ def main():
         df=p.comments_str
         if args.class_str:
             df=pd.DataFrame(df[args.class_str])
-        # df=df.applymap(lambda s: p.length_selection(s,args.min_words, args.max_words))
-        # df=df.applymap(lambda s: p.phrase_selection(s,args.min_phrase, args.max_phrase))
+        df=df.applymap(lambda s: length_selection(s,args.min_words, args.max_words))
+        df=df.applymap(lambda s: phrase_selection(s,args.min_phrase, args.max_phrase))
 
         selected_strings = df.copy()
 
-        corpus = read_to_list('/data/share/liuchang/car_comment/mask/selected_str_5_80_p5_p10.txt')
-        STOP_WORDS = read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
-        corpus_keywords = read_to_dict('/data/share/liuchang/car_comment/mask/corpus_keywords', '\t', float, 1000)
-        word_tfidf = read_to_dict('/data/share/liuchang/car_comment/mask/word_tfidf', '\t', float, None)
-        num_words = read_to_list('/data/share/liuchang/car_comment/mask/mask_comments/data_process/key_words_all.txt')
+        corpus = read_to_list('/nfs/users/liuchang/comments_dayu/selected_str_5_80_p5_p10.txt')
+        STOP_WORDS = read_to_dict('/nfs/users/liuchang/comments_dayu/stop_words','\t',float)
+        corpus_keywords = read_to_dict('/nfs/users/liuchang/comments_dayu/corpus_keywords', '\t', float, 1000)
+        word_tfidf = read_to_dict('/nfs/users/liuchang/comments_dayu/word_tfidf', '\t', float, None)
+        num_words = read_to_list('/nfs/users/liuchang/comments_dayu/mask_comments/data_process/key_words_all.txt')
 
         vectorizer = TfidfVectorizer(token_pattern=r'(?:^|(?<=\s))([^\s]+)(?=\s|$)', stop_words=STOP_WORDS,
                                      max_features=args.max_features)
         vectorizer.fit(corpus)
-        kp = Keywords_Processor(vectorizer, num_words=num_words)
+        kp = Keywords_Processor(vectorizer,
+                                word_tfidf=word_tfidf,
+                                corpus_keywords=corpus_keywords,
+                                stop_words=STOP_WORDS,
+                                num_words=num_words)
 
         if args.run=='mask_unimportant':
             def mask_unimportant(s):
-                result=kp.mask_unimportant_words(s,  word_tfidf=word_tfidf,
-                                                 corpus_keywords=corpus_keywords,
-                                                 stop_words=STOP_WORDS,
-                                                 ratio=args.ratio)
+                result=kp.mask_unimportant_words(s,ratio=args.ratio)
                 result=result+'<seperate>'+s
                 return result
 
@@ -256,8 +257,7 @@ def main():
             else:
                 kw_strings=labels
 
-            keywords = [ kp.extract_keywords(s,word_tfidf=word_tfidf,
-                                                corpus_keywords=corpus_keywords,stop_words=STOP_WORDS)
+            keywords = [ kp.extract_keywords(s,ratio=args.ratio)
                          for s in kw_strings]
 
             z=zip(keywords,corpus)
@@ -291,19 +291,8 @@ def main():
         p.generate_corpus(df, suffix)
 
 
-def generate_dataset(corpus, labels, output_dir, slice_ratios, suffix):
-    with open(os.path.join(output_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
-        f.write('\n'.join(corpus))
-
-    with open(os.path.join(output_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
-        f.write('\n'.join(labels))
-
-    shuffle_index = np.random.permutation(list(range(len(corpus))))
-    paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-    slice_and_save(corpus, shuffle_index, slice_ratios, paths)
-    paths = [os.path.join(output_dir, '{}_labels_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
-    slice_and_save(labels, shuffle_index, slice_ratios, paths)
 
 
-if __name__ == "__main__":
-    main()
+
+# if __name__ == "__main__":
+#     main()

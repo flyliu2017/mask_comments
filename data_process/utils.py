@@ -1,10 +1,9 @@
+import json
 import re
-import sacrebleu
+# import sacrebleu
 import numpy as np
 import time
-
-from data_process.cal_scores import CalScore
-
+import os
 
 
 
@@ -21,7 +20,19 @@ def phrase_selection(string, min_phrase=5, max_phrase=10):
         return ''
     else:
         return '，'.join(l)
-    
+
+def generate_dataset(corpus, labels, output_dir, slice_ratios, suffix):
+    with open(os.path.join(output_dir, 'masked_corpus_{}'.format(suffix)), 'w', encoding='utf8') as f:
+        f.write('\n'.join(corpus))
+
+    with open(os.path.join(output_dir, 'labels_{}'.format(suffix)), 'w', encoding='utf8') as f:
+        f.write('\n'.join(labels))
+
+    shuffle_index = np.random.permutation(list(range(len(corpus))))
+    paths = [os.path.join(output_dir, '{}_corpus_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
+    slice_and_save(corpus, shuffle_index, slice_ratios, paths)
+    paths = [os.path.join(output_dir, '{}_labels_{}'.format(s, suffix)) for s in ['train', 'eval', 'test']]
+    slice_and_save(labels, shuffle_index, slice_ratios, paths)
 
 def compare_mask(preds, labels, corpus, output='compare'):
     if len(preds) != len(labels) or len(labels) != len(corpus):
@@ -53,7 +64,7 @@ def read_to_list(path):
         l = f.read().splitlines()
     return l
 
-def read_to_dict(path,sep,value_type,range):
+def read_to_dict(path,sep,value_type,range=None):
     with open(path, 'r') as f:
         l = f.read().splitlines()
     if range:
@@ -64,7 +75,7 @@ def read_to_dict(path,sep,value_type,range):
         d[key]=value_type(value)
     return d
 
-STOP_WORDS=read_to_list('/data/share/liuchang/car_comment/mask/stop_words')
+STOP_WORDS=read_to_list('/nfs/users/liuchang/car_comment/mask/stop_words')
 
 def cal_bleu(predictions, labels, output="bleu"):
     if len(predictions) != len(labels):
@@ -104,7 +115,7 @@ def slice_and_save(text_list, shuffle_index, slice_ratios, paths):
             f.write('\n'.join(shuffle_list[slide_num[i]:slide_num[i + 1]]))
 
 
-def sort_by_slor(scorer : CalScore, results,entropy, corpus,output):
+def sort_by_slor(scorer, results,entropy, corpus,output):
     slor=[scorer.cal_slor_with_entropy(r.split('__.+?__')[-1],float(e)) for r,e in zip(results,entropy)]
     results_with_slor=list(zip(results,corpus,slor))
 
@@ -191,7 +202,7 @@ def extract_keywords(vectorizer, feature_names, string, word_tfidf:dict=None,cor
     return ' '.join(keywords) + ' [sep] '
 
 def topn_words_from_dict(word_score_dict, num, candidates=None, reverse=True):
-    if not candidates:
+    if candidates==None:
         candidates=word_score_dict.keys()
 
     l = [(w, word_score_dict[w]) for w in candidates]
@@ -199,5 +210,69 @@ def topn_words_from_dict(word_score_dict, num, candidates=None, reverse=True):
     l = [n[0] for n in l[:num]]
     return l
 
+def combination(n, m):
+    if m >= n:
+        return 1
+    return np.math.factorial(n) // np.math.factorial(m) // np.math.factorial(n - m)
+
+def permutation(n,m):
+    if m >= n:
+        return 1
+    return np.math.factorial(n) // np.math.factorial(n - m)
 
 
+def binarySearch(arr, l, r, x):
+    while l <= r:
+
+        mid = l + (r - l) / 2;
+
+        if arr[mid] == x:
+            return mid
+
+        elif arr[mid] < x:
+            l = mid + 1
+
+        else:
+            r = mid - 1
+
+    return -1
+
+
+def read_file(path):
+    with open(path, 'r', encoding='utf8') as f:
+        txts = f.readlines()
+        txts = [n.strip() for n in txts]
+    return txts
+
+
+def write_to_file(path, txts):
+    txts = [n + '\n' if not n.endswith('\n') else n for n in txts]
+    with open(path, 'w', encoding='utf8') as f:
+        f.writelines(txts)
+
+
+def shuffle(*args):
+    lengths = set([len(l) for l in args])
+    if len(lengths) > 1:
+        raise ValueError('lists should have same length')
+
+    index = np.random.permutation(lengths.pop())
+
+    def _shuffle(l):
+        return [l[i] for i in index]
+
+    return [_shuffle(l) for l in args]
+
+def read_json(path, lines=False):
+    with open(path, 'r') as f:
+        if lines:
+            result = []
+            for line in f:
+                result.append(json.loads(line))
+        else:
+            result = json.load(f)
+    return result
+
+def save_json(d, path):
+    with open(path, 'w') as f:
+        json.dump(d, f,ensure_ascii=False, indent=2)

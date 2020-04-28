@@ -3,7 +3,7 @@ from sklearn.svm import SVR
 import os
 import numpy as np
 import matplotlib.pyplot as pl
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler,scale
 #
 # svm.fit(fs,scores)
 # train_scores = svm.predict(fs)
@@ -91,12 +91,12 @@ def scale_features(min_value,max_value,features):
     return result
 
 if __name__ == '__main__':
-    data_dir = '/data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask'
+    data_dir = '/nfs/users/liuchang/car_comment/mask/p5_p10/keywords/only_mask'
 
-    with open('/data/share/liuchang/car_comment/mask/mask_comments/data_process/features2.tsv', 'r',
+    with open('/nfs/users/liuchang/car_comment/mask/mask_comments/data_process/features2.tsv', 'r',
               encoding='utf8') as f:
         fs = f.readlines()
-    with open('/data/share/liuchang/car_comment/mask/mask_comments/data_process/test_features.tsv', 'r',
+    with open('/nfs/users/liuchang/car_comment/mask/mask_comments/data_process/test_features.tsv', 'r',
               encoding='utf8') as f:
         test_fs = f.readlines()
 
@@ -126,13 +126,16 @@ if __name__ == '__main__':
     svm = SVR(C=100, gamma=10)
 
     param_grid = {
-        'gamma': [0.1, 1,5, 8,10,12,15],
-        'C': [1, 10, 100, 1000, 2000]
+        'gamma': [0.1, 1,5, 8,10,12,15,20,30,50],
+        'C': [1, 10, 100, 1000],
+        'epsilon':[0.001,0.01,0.1,1,10]
         # 'C': [100]
     }
     rand_samples=generate_high_scores(fs,scores,threshold=3,replicas=5)
     fs=fs+list(rand_samples[0])
     scores=scores+list(rand_samples[1])
-    # gridsearch(svm,param_grid,fs,scores)
-    compare_params(param_grid,fs,scores,test_fs,true_test_scores)
+
+    fs,test_fs=map(scale,(fs,test_fs))
+    gridsearch(svm,param_grid,fs,scores)
+    # compare_params(param_grid,fs,scores,test_fs,true_test_scores)
     # print(rand_samples)

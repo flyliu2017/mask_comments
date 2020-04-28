@@ -1,8 +1,7 @@
 #coding=utf8
 import numpy as np
 import json
-# from rouge import Rouge
-import requests
+from rouge import Rouge
 import time
 from tensorflow.contrib import predictor
 
@@ -30,7 +29,7 @@ def read_vocab(vocab_filepath):
 
 class CalScore(object):
     def __init__(self, model_path='unigram_probs_model.json'):
-        # self.rouge = Rouge()  # codes from https://github.com/pltrdy/rouge
+        self.rouge = Rouge()  # codes from https://github.com/pltrdy/rouge
         self.unigram_probs = json.load(open(model_path))
         self.w2i = read_vocab('/data/xueyou/car/comment/vocab.txt')
         self.lm=predictor.from_saved_model("/data/xueyou/car/comment/lm/score/0/")
@@ -68,6 +67,7 @@ class CalScore(object):
     #                              json=data).json()['predictions']
     #     ppl = ret_item[0]['ppl']
     #     return ppl
+
     def get_ppl_from_lm(self, rewrite_tokens):
         """通过预训练的语言模型计算ppl"""
 
@@ -169,7 +169,7 @@ class CalScore(object):
 
 
 def demo():
-    original_tokens = "， 至于 外观 是 不 惊艳 但是 比较 耐 看 的 那种"  # 原始评论，单词之间以空格相隔
+    # original_tokens = "， 至于 外观 是 不 惊艳 但是 比较 耐 看 的 那种"  # 原始评论，单词之间以空格相隔
     # rewrite_tokens = "外观 大气 ，  动力 还 不错"  # 模型改写后评论，单词之间以空格相隔
     rewrite_tokens = ["至于 外观 是 不 惊艳 但是 比较 耐 看 的 那种","性价比 不错"]  # 模型改写后评论，单词之间以空格相隔
     # rewrite_tokens = ["性价比 不错"]  # 模型改写后评论，单词之间以空格相隔

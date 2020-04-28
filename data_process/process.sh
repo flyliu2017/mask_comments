@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 python3 -m data_process.processor mask  \
-                                            --df_path /data/share/liuchang/car_comment/mask/df_5_80_p5_p10.json    \
-                                            --output_dir /data/share/liuchang/car_comment/mask/p5_p10/keywords/only_mask    \
+                                            --df_path /nfs/users/liuchang/car_comment/mask/df_5_80_p5_p10.json    \
+                                            --output_dir /nfs/users/liuchang/car_comment/mask/p5_p10/keywords/only_mask    \
                                             --min_words 10    \
                                             --max_words 80    \
                                             --min_phrase 5    \
@@ -10,7 +10,7 @@ python3 -m data_process.processor mask  \
                                             --suffix only_mask    \
                                             --mode random    \
                                             --add_keywords only_mask  &&  \
-python3  /data/share/liuchang/car_comment/mask/mask_comments/modification/keywords.py  phrase --suffix only_mask &&  \
-python3  /data/share/liuchang/car_comment/mask/mask_comments/modification/change_mask.py
+python3  /nfs/users/liuchang/car_comment/mask/mask_comments/modification/keywords.py  phrase --suffix only_mask &&  \
+python3  /nfs/users/liuchang/car_comment/mask/mask_comments/modification/change_mask.py
 
 eval cd $input4 && python3 -m data_process.sort_result wmd --num 0 --data_dir $input1 --result_file $input3 --features_file $input2 --suffix mask_unimportant

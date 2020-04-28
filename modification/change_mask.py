@@ -83,7 +83,7 @@ def change_mask_and_keywords(out_dir,suffix,index=0):
 
 if __name__ == '__main__':
     
-    out_dir='/data/share/liuchang/car_comment/mask/p5_p10/keywords/whole_sentence'
+    out_dir='/nfs/users/liuchang/car_comment/mask/p5_p10/keywords/whole_sentence'
     suffix='whole_sentence'
     prefix='test'
     first_mask(out_dir,suffix)
